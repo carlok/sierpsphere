@@ -2,23 +2,28 @@
 
 Generate 3D fractal-like structures inspired by the Sierpinski Gasket using spheres as the base seed. Boolean operations (add, subtract, intersect) are applied iteratively along polyhedral symmetry axes (tetrahedral, octahedral, icosahedral) to carve and grow complex "lace" geometry from a single sphere.
 
-Two rendering paths: a **real-time GLSL raymarcher** in the browser for instant feedback, and a **Python SDF engine** that extracts meshes via marching cubes and exports GLB files for 3D printing or external tools.
+![SierpSphere — bronze render, tetrahedral symmetry, 3 iterations](sierpsphere_hq_b.png)
+
+> *HQ snapshot: tetrahedral symmetry · 3 iterations · sub→add→sub · bronze PBR raymarcher*
+
+Two rendering paths: a **real-time marching-cubes viewer** in the browser for instant feedback, and a **Python SDF engine** that extracts meshes via marching cubes and exports GLB files for 3D printing or external tools. A **Snapshot HQ** button fires a single-frame GLSL PBR raymarcher at 2× resolution for publication-quality output.
 
 ```
 sierpsphere/
 ├── docker-compose.yml
+├── sierpsphere_hq_b.png            # example HQ snapshot (bronze, tetrahedral, 3 iters)
 ├── grammar/
-│   ├── schema.json                 # JSON Schema for the DSL
-│   └── sierpinski_classic.json     # example preset
+│   ├── schema.json                 # JSON Schema for the grammar DSL
+│   └── sierpinski_classic.json     # sub→add→sub preset (tetrahedral, sf=0.5)
 ├── engine/
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   ├── sdf.py                      # SDF evaluator, marching cubes, GLTF export
+│   ├── sdf.py                      # SDF evaluator + marching cubes + GLB export
 │   └── server.py                   # Flask REST API
 └── viewer/
     ├── Dockerfile
     ├── nginx.conf
-    └── index.html                  # Three.js + GLSL raymarcher
+    └── index.html                  # interactive viewer: marching cubes + HQ snapshot
 ```
 
 ---
@@ -79,7 +84,7 @@ podman compose up -d
 
 Navigate to **http://localhost:8001** in your browser.
 
-You should see the default Sierpinski-sphere rendered via the GLSL raymarcher. Use the right-hand panel to tweak parameters and hit **Apply (Raymarcher)** to re-render.
+You should see the default Sierpinski-sphere rendered via marching cubes. Use the right-hand panel to tweak parameters and hit **Apply** to recompute the mesh. Use **Snapshot HQ** for a publication-quality PBR render.
 
 ### 5. Verify the API
 
@@ -286,14 +291,18 @@ curl -o classic.glb http://localhost:5000/api/mesh/sierpinski_classic
 |---------|--------|
 | **Drag** | Orbit camera around the fractal |
 | **Scroll** | Zoom in/out (range: 1.5–10 units) |
-| **Symmetry dropdown** | Switch polyhedral axis set |
+| **Preset menu** | Load any grammar from `grammar/` |
+| **Symmetry dropdown** | Switch polyhedral axis set (tetrahedral / octahedral / icosahedral) |
 | **Iterations slider** | 1–5 recursive steps |
 | **Scale Factor slider** | 0.20–0.60 child/parent ratio |
-| **Smooth K slider** | 0–0.100 blend radius |
-| **Apply (Raymarcher)** | Regenerate the GLSL shader from current params |
-| **Download GLB Mesh** | Send current grammar to the API, download the extracted mesh |
+| **Distance Factor slider** | Offset of children along symmetry axis |
+| **Smooth K slider** | 0–0.100 blend radius for Boolean edges |
+| **Mesh Resolution slider** | Grid density for marching cubes (32–128) |
+| **Apply** | Recompute marching cubes mesh from current params |
+| **Snapshot HQ** | Single-frame PBR raymarcher → save PNG at 2× resolution |
+| **Download GLB** | Send grammar to API, download watertight GLB mesh |
 
-The viewer works **entirely client-side** for raymarching — the API is only needed for GLB mesh export and loading presets.
+The viewer runs **entirely client-side** for interactive rendering (marching cubes in JavaScript). The API is only needed for high-resolution GLB export and loading presets by name.
 
 ---
 
@@ -352,6 +361,38 @@ podman compose down --rmi all --volumes
 ```bash
 podman image prune -f
 ```
+
+---
+
+## Ideas for future tuning
+
+### Grammar / geometry
+- **Mixed primitives per iteration** — subtract spheres, add cubes, intersect octahedra; each level can use a different `primitive` to break the uniform roundness
+- **Non-uniform scale per axis** — currently all symmetry vertices use the same `scale_factor`; allowing per-vertex overrides would break the symmetry elegantly
+- **`distance_factor` < 1.0** — pull children inside the parent surface for tightly nested, coral-like forms instead of protruding balls
+- **`apply_to: "all"`** — expand from every prior level simultaneously for denser, more fractal-like branching (warning: count explodes fast)
+- **Noise-perturbed centers** — add a small random offset to child centers per iteration for organic, non-symmetric variants
+- **Hybrid symmetry** — tetrahedral first iteration, icosahedral second; mix groups across levels
+
+### Rendering (Snapshot HQ shader)
+- **Environment map IBL** — replace the two-light model with a cube-map for photorealistic reflections; bronze especially benefits from a warm studio HDR
+- **Subsurface scattering** — thin areas of the fractal (small subtracted spheres) could glow slightly if treated as translucent
+- **Depth of field** — bokeh blur on the background/foreground for a macro-photography feel
+- **Chromatic iridescence** — vary the Fresnel F0 tint by normal angle to simulate patinated bronze or oil-slick surfaces
+- **Progressive accumulation** — accumulate multiple jittered frames for anti-aliasing without doubling resolution
+- **Volumetric fog** — a thin atmospheric layer between camera and object adds depth on dark backgrounds
+
+### Performance
+- **GPU marching cubes** — offload the grid sampling to a WebGL compute pass; the JS CPU marching cubes is the current bottleneck at resolution > 64
+- **Sparse voxel octree** — skip empty regions during SDF evaluation; significant speedup at low iteration counts where most of the volume is empty
+- **Cached SDF grid** — store the Float32 grid and only re-run marching cubes when camera-independent params change
+- **Web Worker** — run the marching cubes loop in a worker thread to avoid blocking the UI during recompute
+
+### Export / integration
+- **Watertight manifold check** — run `trimesh.repair.fill_holes()` before GLB export to guarantee printability
+- **USDZ export** — for AR Quick Look on iOS/macOS (`trimesh` supports it natively)
+- **Grammar evolution / GA** — a simple genetic algorithm over grammar params with a fitness function (surface area / volume ratio, fractal dimension estimate) to auto-discover interesting forms
+- **Three.js MeshStandardMaterial** — apply the same bronze PBR params to the real-time mesh so the interactive view matches the HQ snapshot
 
 ---
 

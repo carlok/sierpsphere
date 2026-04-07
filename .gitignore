@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build artifacts
+*.glb
+*.gltf
+
+# OS
+.DS_Store
+
+# Container
+.podman/
+
+# Claude Code local settings
+.claude/

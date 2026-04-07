@@ -151,22 +151,22 @@ class SierpSphereEvaluator:
             new_active = []
             for parent_center, parent_radius in active:
                 child_radius = parent_radius * sf
-                # Parent's outward direction from seed center
-                p_dir = parent_center - self.seed_center
-                p_len = np.linalg.norm(p_dir)
-                if p_len > 0:
-                    p_dir = p_dir / p_len
 
                 for v in self.base_vertices:
-                    # For "add": skip outward-pointing vertex (aligned
-                    # with parent's direction from seed). Keeps only the
-                    # 3 that point inward toward remaining surface.
-                    if it["operation"] == "add" and p_len > 0:
-                        dot = float(np.dot(v, p_dir))
-                        if dot > 0.5:
+                    child_center = parent_center + v * parent_radius * df
+
+                    # For "add": evaluate SDF-so-far at candidate center.
+                    # Skip if center is in void (far from any surface).
+                    if it["operation"] == "add":
+                        seed_sdf_fn = SDF_PRIMITIVES[self.seed_type]
+                        d = seed_sdf_fn(child_center.reshape(1, 3),
+                                        self.seed_center, self.seed_radius)[0]
+                        for b_fn, s_fn, c, r, k in ops:
+                            dc = s_fn(child_center.reshape(1, 3), c, r)[0]
+                            d = b_fn(dc, d, k)
+                        if d > child_radius * 0.5:
                             continue
 
-                    child_center = parent_center + v * parent_radius * df
                     ops.append((bool_fn, sdf_fn, child_center, child_radius, sk))
                     new_active.append((child_center, child_radius))
 
