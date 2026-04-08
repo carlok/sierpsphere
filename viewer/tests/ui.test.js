@@ -83,6 +83,7 @@ function setupDOM() {
   <button id="btn-apply"></button>
   <button id="btn-save"></button>
   <button id="btn-mesh"></button>
+  <select id="mat-select"><option value="bronze">Bronze</option></select>
   <button id="btn-snap"></button>
   <div id="active-preset"></div>
   <div id="grammar-view"></div>

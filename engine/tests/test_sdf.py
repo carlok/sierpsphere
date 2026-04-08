@@ -31,7 +31,7 @@ def test_sdf_sphere_center_negative() -> None:
     assert d < 0
 
 
-def test_apply_to_default_matches_all_behavior() -> None:
+def test_apply_to_default_matches_new_behavior() -> None:
     base = {
         "seed": {"type": "sphere", "radius": 1.0, "center": [0, 0, 0]},
         "symmetry_group": "tetrahedral",
@@ -40,13 +40,13 @@ def test_apply_to_default_matches_all_behavior() -> None:
             {"operation": "subtract", "primitive": "sphere", "scale_factor": 0.5, "distance_factor": 1.0, "smooth_radius": 0.0},
         ],
     }
-    explicit_all = {
+    explicit_new = {
         **base,
-        "iterations": [dict(base["iterations"][0], apply_to="all"), dict(base["iterations"][1], apply_to="all")],
+        "iterations": [dict(base["iterations"][0], apply_to="new"), dict(base["iterations"][1], apply_to="new")],
     }
     default_count = len(SierpSphereEvaluator(base)._build_ops())
-    all_count = len(SierpSphereEvaluator(explicit_all)._build_ops())
-    assert default_count == all_count
+    new_count = len(SierpSphereEvaluator(explicit_new)._build_ops())
+    assert default_count == new_count
 
 
 def test_apply_to_surface_differs_from_new() -> None:

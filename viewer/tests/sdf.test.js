@@ -25,7 +25,7 @@ describe("sdf module", () => {
     expect(dOutside).toBeGreaterThan(0);
   });
 
-  it("apply_to default matches explicit all", () => {
+  it("apply_to default matches explicit new", () => {
     const base = {
       seed: { type: "sphere", radius: 1, center: [0, 0, 0] },
       symmetry_group: "tetrahedral",
@@ -34,11 +34,11 @@ describe("sdf module", () => {
         { operation: "subtract", primitive: "sphere", scale_factor: 0.5, distance_factor: 1, smooth_radius: 0.0 },
       ],
     };
-    const explicitAll = {
+    const explicitNew = {
       ...base,
-      iterations: base.iterations.map((it) => ({ ...it, apply_to: "all" })),
+      iterations: base.iterations.map((it) => ({ ...it, apply_to: "new" })),
     };
-    expect(buildOps(base).length).toBe(buildOps(explicitAll).length);
+    expect(buildOps(base).length).toBe(buildOps(explicitNew).length);
   });
 
   it("apply_to surface behavior differs from new", () => {

@@ -26,3 +26,30 @@ services:
     depends_on:
       - engine
     restart: unless-stopped
+
+  test-py:
+    build:
+      context: ./engine
+    profiles: [test]
+    working_dir: /app
+    volumes:
+      - ./grammar:/app/grammar:ro
+      - ./engine/sdf.py:/app/sdf.py:ro
+      - ./engine/server.py:/app/server.py:ro
+      - ./engine/grammar_store.py:/app/grammar_store.py:ro
+      - ./engine/tests:/app/tests:ro
+      - ./engine/pytest.ini:/app/pytest.ini:ro
+    environment:
+      - GRAMMAR_DIR=/app/grammar
+    command: ["pytest"]
+
+  test-js:
+    image: docker.io/library/node:22-alpine
+    profiles: [test]
+    working_dir: /app
+    volumes:
+      - ./viewer/package.json:/app/package.json:ro
+      - ./viewer/js:/app/js:ro
+      - ./viewer/tests:/app/tests:ro
+    command: >
+      sh -c "npm install --silent && npm run test:coverage"
