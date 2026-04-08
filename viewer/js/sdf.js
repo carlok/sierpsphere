@@ -82,7 +82,7 @@ export function buildOps(grammar) {
     const df = it.distance_factor ?? 1.0;
     const sk = it.smooth_radius ?? 0.0;
     let sourceNodes;
-    const applyTo = it.apply_to || "all";
+    const applyTo = it.apply_to || "new";
     if (applyTo === "all") {
       sourceNodes = allNodes;
     } else if (applyTo === "surface") {
