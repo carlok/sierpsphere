@@ -1,4 +1,5 @@
 services:
+  # Dev-only stack: runtime code is volume-mounted from host.
   engine:
     build:
       context: ./engine

@@ -55,7 +55,7 @@ pip install podman-compose   # if needed
 
 ---
 
-## First-time setup
+## First-time setup (dev-only, volume-mounted)
 
 ### 1. Clone or enter the project
 
@@ -69,7 +69,8 @@ cd /path/to/sierpsphere
 podman compose build
 ```
 
-This builds two images:
+This builds two images with dependencies and runtime only.
+Project business logic is mounted at runtime via volumes (no app code copied in runtime image).
 
 | Image | Base | Purpose |
 |-------|------|---------|
@@ -129,19 +130,19 @@ podman compose down
 
 ### Rebuilding after code changes
 
-If you edit Python files (`engine/sdf.py`, `engine/server.py`, `engine/grammar_store.py`):
+If you edit Python files (`engine/sdf.py`, `engine/server.py`, `engine/grammar_store.py`), restart is usually enough (volume-mounted):
 
 ```bash
-podman compose up -d --build engine
+podman compose restart engine
 ```
 
-If you edit the viewer (`viewer/index.html` or `viewer/js/*`):
+If you edit the viewer (`viewer/index.html` or `viewer/js/*`), restart is usually enough (volume-mounted):
 
 ```bash
-podman compose up -d --build viewer
+podman compose restart viewer
 ```
 
-Rebuild everything:
+Rebuild only when dependencies or Dockerfiles change:
 
 ```bash
 podman compose up -d --build
@@ -153,24 +154,8 @@ podman compose up -d --build
 podman compose logs -f engine
 ```
 
-The Flask server runs in debug mode, but since the code is baked into the image you need to rebuild after edits. For a faster loop, mount the source:
-
-```bash
-# Development override: mount source for hot reload
-podman compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-```
-
-Create a `docker-compose.dev.yml` if you want live-reloading:
-
-```yaml
-services:
-  engine:
-    volumes:
-      - ./engine/sdf.py:/app/sdf.py:ro
-      - ./engine/server.py:/app/server.py:ro
-    environment:
-      - FLASK_DEBUG=1
-```
+The Flask server runs in debug mode and project code is already mounted from host volumes.
+Use `podman compose restart engine` after Python edits when needed.
 
 ---
 
