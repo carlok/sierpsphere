@@ -12,6 +12,7 @@ from pathlib import Path
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from werkzeug.exceptions import BadRequest
 
 from grammar_store import list_grammar_names, load_grammar
 from sdf import SierpSphereEvaluator, extract_mesh
@@ -29,26 +30,35 @@ def list_grammars():
 @app.route("/api/grammar/<name>", methods=["GET"])
 def get_grammar(name: str):
     """Return the raw grammar JSON for a named preset."""
-    grammar = load_grammar(GRAMMAR_DIR, name)
+    try:
+        grammar = load_grammar(GRAMMAR_DIR, name)
+    except FileNotFoundError as exc:
+        return jsonify({"error": str(exc)}), 404
     return jsonify(grammar)
 
 
 @app.route("/api/evaluate", methods=["POST"])
 def evaluate_grammar():
     """Accept grammar JSON, return the flat SDF description for the raymarcher."""
-    grammar = request.get_json(force=True)
-    ev = SierpSphereEvaluator(grammar)
-    return jsonify(ev.to_raymarcher_json())
+    try:
+        grammar = request.get_json(force=True)
+        ev = SierpSphereEvaluator(grammar)
+        return jsonify(ev.to_raymarcher_json())
+    except (BadRequest, KeyError, TypeError, ValueError) as exc:
+        return jsonify({"error": f"Invalid grammar payload: {exc}"}), 400
 
 
 @app.route("/api/mesh", methods=["POST"])
 def mesh_from_grammar():
     """Accept grammar JSON, return a GLB mesh."""
-    grammar = request.get_json(force=True)
-    ev = SierpSphereEvaluator(grammar)
-    res = grammar.get("render", {}).get("resolution", 128)
-    bnd = grammar.get("render", {}).get("bounds", 1.8)
-    mesh = extract_mesh(ev, resolution=res, bounds=bnd)
+    try:
+        grammar = request.get_json(force=True)
+        ev = SierpSphereEvaluator(grammar)
+        res = grammar.get("render", {}).get("resolution", 128)
+        bnd = grammar.get("render", {}).get("bounds", 1.8)
+        mesh = extract_mesh(ev, resolution=res, bounds=bnd)
+    except (BadRequest, KeyError, TypeError, ValueError) as exc:
+        return jsonify({"error": f"Invalid grammar payload: {exc}"}), 400
 
     buf = io.BytesIO()
     mesh.export(buf, file_type="glb")
@@ -59,11 +69,14 @@ def mesh_from_grammar():
 @app.route("/api/mesh/<name>", methods=["GET"])
 def mesh_named(name: str):
     """Export a named grammar file as GLB."""
-    grammar = load_grammar(GRAMMAR_DIR, name)
-    ev = SierpSphereEvaluator(grammar)
-    res = grammar.get("render", {}).get("resolution", 128)
-    bnd = grammar.get("render", {}).get("bounds", 1.8)
-    mesh = extract_mesh(ev, resolution=res, bounds=bnd)
+    try:
+        grammar = load_grammar(GRAMMAR_DIR, name)
+        ev = SierpSphereEvaluator(grammar)
+        res = grammar.get("render", {}).get("resolution", 128)
+        bnd = grammar.get("render", {}).get("bounds", 1.8)
+        mesh = extract_mesh(ev, resolution=res, bounds=bnd)
+    except FileNotFoundError as exc:
+        return jsonify({"error": str(exc)}), 404
 
     buf = io.BytesIO()
     mesh.export(buf, file_type="glb")

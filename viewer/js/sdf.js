@@ -69,7 +69,10 @@ export function buildOps(grammar) {
   const seedFn = PRIMS[seedType] || sdfSphere;
   const seedC = grammar.seed.center || [0, 0, 0];
   const seedR = grammar.seed.radius;
-  let active = [{ cx: seedC[0], cy: seedC[1], cz: seedC[2], r: seedR }];
+  let allNodes = [{ cx: seedC[0], cy: seedC[1], cz: seedC[2], r: seedR }];
+  let newNodes = [{ cx: seedC[0], cy: seedC[1], cz: seedC[2], r: seedR }];
+
+  const evalAt = (x, y, z) => evalSDF(ops, seedFn, seedR, seedC, x, y, z);
 
   for (const it of iters) {
     const boolFn = BOOL_OPS[it.operation];
@@ -78,9 +81,18 @@ export function buildOps(grammar) {
     const sf = it.scale_factor;
     const df = it.distance_factor ?? 1.0;
     const sk = it.smooth_radius ?? 0.0;
-    const newActive = [];
+    let sourceNodes;
+    const applyTo = it.apply_to || "all";
+    if (applyTo === "all") {
+      sourceNodes = allNodes;
+    } else if (applyTo === "surface") {
+      sourceNodes = allNodes.filter((n) => Math.abs(evalAt(n.cx, n.cy, n.cz)) <= n.r * 0.25);
+    } else {
+      sourceNodes = newNodes;
+    }
+    const nextNodes = [];
 
-    for (const p of active) {
+    for (const p of sourceNodes) {
       const childR = p.r * sf;
       for (const v of verts) {
         const cx = p.cx + v[0] * p.r * df;
@@ -93,12 +105,12 @@ export function buildOps(grammar) {
         }
 
         ops.push({ boolFn, sdfFn, prim: primName, cx, cy, cz, r: childR, k: sk });
-        newActive.push({ cx, cy, cz, r: childR });
+        nextNodes.push({ cx, cy, cz, r: childR });
       }
     }
 
-    const applyTo = it.apply_to || "new";
-    active = applyTo === "all" ? active.concat(newActive) : newActive;
+    allNodes = allNodes.concat(nextNodes);
+    newNodes = nextNodes;
   }
 
   return ops;

@@ -81,6 +81,7 @@ function setupDOM() {
   <input id="res-range" type="range" value="32" />
   <span id="sym-val"></span><span id="iter-val"></span><span id="sf-val"></span><span id="res-val"></span>
   <button id="btn-apply"></button>
+  <button id="btn-save"></button>
   <button id="btn-mesh"></button>
   <button id="btn-snap"></button>
   <div id="active-preset"></div>
@@ -132,6 +133,39 @@ describe("ui wiring", () => {
     await Promise.resolve();
     document.getElementById("btn-snap").click();
     expect(mockRenderHQSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses preset-aware operation sequence with decaying smoothness", async () => {
+    const grammar = {
+      seed: { type: "cube", radius: 1, center: [0, 0, 0] },
+      symmetry_group: "tetrahedral",
+      iterations: [
+        { operation: "subtract", primitive: "cube", scale_factor: 0.5, smooth_radius: 0.02, apply_to: "new" },
+        { operation: "add", primitive: "cube", scale_factor: 0.5, smooth_radius: 0.01, apply_to: "new" },
+        { operation: "subtract", primitive: "cube", scale_factor: 0.5, smooth_radius: 0.005, apply_to: "new" },
+      ],
+      render: { bounds: 1.8 },
+    };
+    global.fetch = vi.fn(async (url) => {
+      if (String(url).endsWith("/api/grammar")) return { json: async () => ["sierpinski_cube"] };
+      if (String(url).includes("/api/grammar/sierpinski_cube")) return { json: async () => grammar };
+      if (String(url).includes("/api/mesh")) return { ok: true, blob: async () => new Blob(["x"]) };
+      return { json: async () => ({}) };
+    });
+
+    const { initViewer } = await import("../js/ui.js");
+    initViewer();
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+
+    const iter = document.getElementById("iter-range");
+    iter.value = "4";
+    iter.dispatchEvent(new Event("change"));
+    vi.runAllTimers();
+
+    const rows = document.getElementById("grammar-view").textContent;
+    expect(rows).toContain("SUBTRACT");
+    const fetchCalls = global.fetch.mock.calls.filter(([url]) => String(url).includes("/api/grammar/"));
+    expect(fetchCalls.length).toBeGreaterThan(0);
   });
 });
 

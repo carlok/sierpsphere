@@ -24,5 +24,35 @@ describe("sdf module", () => {
     expect(dInside).toBeLessThan(0);
     expect(dOutside).toBeGreaterThan(0);
   });
+
+  it("apply_to default matches explicit all", () => {
+    const base = {
+      seed: { type: "sphere", radius: 1, center: [0, 0, 0] },
+      symmetry_group: "tetrahedral",
+      iterations: [
+        { operation: "subtract", primitive: "sphere", scale_factor: 0.5, distance_factor: 1, smooth_radius: 0.0 },
+        { operation: "subtract", primitive: "sphere", scale_factor: 0.5, distance_factor: 1, smooth_radius: 0.0 },
+      ],
+    };
+    const explicitAll = {
+      ...base,
+      iterations: base.iterations.map((it) => ({ ...it, apply_to: "all" })),
+    };
+    expect(buildOps(base).length).toBe(buildOps(explicitAll).length);
+  });
+
+  it("apply_to surface behavior differs from new", () => {
+    const common = {
+      seed: { type: "sphere", radius: 1, center: [0, 0, 0] },
+      symmetry_group: "tetrahedral",
+      iterations: [
+        { operation: "subtract", primitive: "sphere", scale_factor: 0.5, distance_factor: 1, smooth_radius: 0.02, apply_to: "all" },
+        { operation: "add", primitive: "sphere", scale_factor: 0.5, distance_factor: 1, smooth_radius: 0.01 },
+      ],
+    };
+    const surface = { ...common, iterations: [common.iterations[0], { ...common.iterations[1], apply_to: "surface" }] };
+    const nextOnly = { ...common, iterations: [common.iterations[0], { ...common.iterations[1], apply_to: "new" }] };
+    expect(buildOps(surface).length).not.toBe(buildOps(nextOnly).length);
+  });
 });
 

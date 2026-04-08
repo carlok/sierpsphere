@@ -6,7 +6,12 @@ import { renderHQSnapshot } from "./hq-snapshot.js";
 const state = {
   activePreset: null,
   activeGrammar: null,
-  customProfile: { seedType: "sphere", iterPrimitive: "sphere" },
+  customProfile: {
+    seedType: "sphere",
+    iterPrimitive: "sphere",
+    opTemplate: ["subtract", "add", "subtract"],
+    smoothTemplate: [0.02, 0.01, 0.005],
+  },
   debounce: null,
 };
 
@@ -71,24 +76,41 @@ export function initViewer() {
     const sym = document.getElementById("sym-select").value;
     const iters = Number.parseInt(document.getElementById("iter-range").value, 10);
     const sf = Number.parseFloat(document.getElementById("sf-range").value);
+    const res = Number.parseInt(document.getElementById("res-range").value, 10);
+    const opTemplate = state.customProfile.opTemplate.length
+      ? state.customProfile.opTemplate
+      : ["subtract", "add", "subtract"];
+    const smoothTemplate = state.customProfile.smoothTemplate.length
+      ? state.customProfile.smoothTemplate
+      : [0.02, 0.01, 0.005];
+    const decay = 0.6;
     return {
       seed: { type: state.customProfile.seedType, radius: 1.0, center: [0, 0, 0] },
       symmetry_group: sym,
-      iterations: Array.from({ length: iters }, (_, i) => ({
-        operation: i % 2 === 0 ? "subtract" : "add",
-        primitive: state.customProfile.iterPrimitive,
-        scale_factor: sf,
-        distance_factor: 1.0,
-        smooth_radius: 0.02,
-        apply_to: "new",
-      })),
-      render: { resolution: 128, bounds: 1.8 },
+      iterations: Array.from({ length: iters }, (_, i) => {
+        const templateOp = i < opTemplate.length ? opTemplate[i] : opTemplate[opTemplate.length - 1];
+        const templateSmooth = i < smoothTemplate.length
+          ? smoothTemplate[i]
+          : smoothTemplate[smoothTemplate.length - 1] * (decay ** (i - smoothTemplate.length + 1));
+        return {
+          operation: templateOp,
+          primitive: state.customProfile.iterPrimitive,
+          scale_factor: sf,
+          distance_factor: 1.0,
+          smooth_radius: Number(templateSmooth.toFixed(6)),
+          apply_to: "new",
+        };
+      }),
+      render: { resolution: res, bounds: 1.8 },
     };
   };
 
   const markCustomFromGrammar = (grammar) => {
     state.customProfile.seedType = grammar?.seed?.type || "sphere";
     state.customProfile.iterPrimitive = grammar?.iterations?.[0]?.primitive || "sphere";
+    const iters = grammar?.iterations || [];
+    state.customProfile.opTemplate = iters.length ? iters.map((it) => it.operation || "subtract") : ["subtract", "add", "subtract"];
+    state.customProfile.smoothTemplate = iters.length ? iters.map((it) => Number(it.smooth_radius ?? 0.0)) : [0.02, 0.01, 0.005];
   };
 
   const renderGrammar = (grammar) => {
@@ -233,6 +255,20 @@ export function initViewer() {
   document.getElementById("res-range").addEventListener("change", () => queueApply(false));
 
   document.getElementById("btn-apply").addEventListener("click", () => queueApply(true));
+  document.getElementById("btn-save").addEventListener("click", () => {
+    const grammar = state.activeGrammar || grammarFromUI();
+    const payload = `${JSON.stringify(grammar, null, 2)}\n`;
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const base = state.activePreset ? state.activePreset : "sierpsphere_custom";
+    a.href = url;
+    a.download = `${base}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus("Grammar JSON saved.");
+    setTimeout(() => setStatus(""), 2500);
+  });
   document.getElementById("btn-mesh").addEventListener("click", async () => {
     const grammar = state.activePreset
       ? await fetch(`${API_BASE}/api/grammar/${state.activePreset}`).then((r) => r.json())

@@ -6,7 +6,6 @@ via marching cubes and exports GLTF.  Also serves the SDF parameters
 as JSON so the WebGL raymarcher can render in real-time.
 """
 
-import json
 import math
 import numpy as np
 
@@ -137,8 +136,17 @@ class SierpSphereEvaluator:
         scaled and offset from every "active center" produced by prior iterations.
         """
         ops = []
-        # Active centers: list of (center, radius) that the next iteration expands from
-        active = [(self.seed_center.copy(), self.seed_radius)]
+        # Keep full node history and last-generated frontier.
+        all_nodes = [(self.seed_center.copy(), self.seed_radius)]
+        new_nodes = [(self.seed_center.copy(), self.seed_radius)]
+
+        def eval_at(point: np.ndarray) -> float:
+            seed_sdf_fn = SDF_PRIMITIVES[self.seed_type]
+            d = seed_sdf_fn(point.reshape(1, 3), self.seed_center, self.seed_radius)[0]
+            for b_fn, s_fn, c, r, k in ops:
+                dc = s_fn(point.reshape(1, 3), c, r)[0]
+                d = b_fn(dc, d, k)
+            return float(d)
 
         for it in self.iterations:
             bool_fn = BOOLEAN_OPS[it["operation"]]
@@ -148,8 +156,20 @@ class SierpSphereEvaluator:
             df = float(it.get("distance_factor", 1.0))
             sk = float(it.get("smooth_radius", 0.0))
 
-            new_active = []
-            for parent_center, parent_radius in active:
+            apply_to = it.get("apply_to", "all")
+            if apply_to == "all":
+                source_nodes = all_nodes
+            elif apply_to == "surface":
+                # "surface" expands only from nodes currently near the implicit surface.
+                source_nodes = []
+                for c, r in all_nodes:
+                    if abs(eval_at(c)) <= r * 0.25:
+                        source_nodes.append((c, r))
+            else:
+                source_nodes = new_nodes
+
+            next_nodes = []
+            for parent_center, parent_radius in source_nodes:
                 child_radius = parent_radius * sf
 
                 for v in self.base_vertices:
@@ -158,25 +178,15 @@ class SierpSphereEvaluator:
                     # For "add": evaluate SDF-so-far at candidate center.
                     # Skip if center is in void (far from any surface).
                     if it["operation"] == "add":
-                        seed_sdf_fn = SDF_PRIMITIVES[self.seed_type]
-                        d = seed_sdf_fn(child_center.reshape(1, 3),
-                                        self.seed_center, self.seed_radius)[0]
-                        for b_fn, s_fn, c, r, k in ops:
-                            dc = s_fn(child_center.reshape(1, 3), c, r)[0]
-                            d = b_fn(dc, d, k)
+                        d = eval_at(child_center)
                         if d > child_radius * 0.5:
                             continue
 
                     ops.append((bool_fn, sdf_fn, child_center, child_radius, sk))
-                    new_active.append((child_center, child_radius))
+                    next_nodes.append((child_center, child_radius))
 
-            # Default: each step expands only from previous step's children,
-            # so sf/df are always relative to the previous level.
-            apply_to = it.get("apply_to", "new")
-            if apply_to == "all":
-                active = active + new_active
-            else:  # "new" or "surface"
-                active = new_active
+            all_nodes = all_nodes + next_nodes
+            new_nodes = next_nodes
 
         return ops
 

@@ -165,7 +165,7 @@ Use `podman compose restart engine` after Python edits when needed.
 
 ```bash
 podman compose build engine
-podman run --rm sierpsphere-engine pytest
+podman run --rm -v "$PWD/engine:/app" -w /app sierpsphere-engine pytest
 ```
 
 ### JavaScript (viewer)
@@ -312,6 +312,7 @@ curl -o classic.glb http://localhost:5000/api/mesh/sierpinski_classic
 | **Smooth K slider** | 0–0.100 blend radius for Boolean edges |
 | **Mesh Resolution slider** | Grid density for marching cubes (32–128) |
 | **Apply** | Recompute marching cubes mesh from current params |
+| **Save Grammar** | Download current active grammar as JSON |
 | **Snapshot HQ** | Single-frame PBR raymarcher → save PNG at 2× resolution |
 | **Download GLB** | Send grammar to API, download watertight GLB mesh |
 
