@@ -43,6 +43,8 @@ export function initViewer() {
   fill.position.set(-3, -2, -3);
   scene.add(fill);
 
+  let needsRender = true;
+
   const meshMat = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
 
   const applyMaterial = (key) => {
@@ -61,7 +63,6 @@ export function initViewer() {
   let currentSeedFn = PRIMS.sphere;
   let currentSeedR = 1.0;
   let currentSeedC = [0, 0, 0];
-  let needsRender = true;
   let isDragging = false;
   let prevMouse = { x: 0, y: 0 };
   const sph = { theta: 0.4, phi: 0.4, r: 3.5 };
