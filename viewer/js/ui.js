@@ -210,11 +210,9 @@ export function initViewer() {
       seed: { ...grammar.seed },
       render: { ...(grammar.render || {}) },
     };
-    if (currentMesh) {
-      scene.remove(currentMesh);
-      currentMesh.geometry.dispose();
-      currentMesh = null;
-    }
+    // Keep old mesh visible while recomputing
+    const prevMesh = currentMesh;
+    currentMesh = null;
 
     const ops = buildOps(state.activeGrammar);
     currentOps = ops;
@@ -231,6 +229,7 @@ export function initViewer() {
       setStatus(`Safe mode: clamped resolution to ${res}.`);
     }
     if (ops.length > GPU_GUARD.maxOpsRealtime) {
+      if (prevMesh) { scene.remove(prevMesh); prevMesh.geometry.dispose(); }
       setStatus(`Safety stop: ${ops.length} ops too heavy for realtime.`);
       document.getElementById("info").textContent = `${ops.length.toLocaleString()} ops blocked (GPU safety)`;
       renderGrammarView(state.activeGrammar);
@@ -249,6 +248,16 @@ export function initViewer() {
       );
       const verts = filterLargestComponent(rawVerts);
       const dt = ((performance.now() - t0) / 1000).toFixed(2);
+
+      // Now swap: remove old, add new
+      if (prevMesh) { scene.remove(prevMesh); prevMesh.geometry.dispose(); }
+
+      if (verts.length === 0) {
+        setStatus(`No geometry — solid fully carved. Try fewer iterations or smaller scale factor.`);
+        document.getElementById("info").textContent = `0 tris | ${ops.length} ops | ${dt}s`;
+        needsRender = true;
+        return;
+      }
 
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
