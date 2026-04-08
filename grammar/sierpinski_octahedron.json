@@ -1,0 +1,43 @@
+{
+    "seed": {
+        "type": "octahedron",
+        "radius": 1.0,
+        "center": [
+            0,
+            0,
+            0
+        ]
+    },
+    "symmetry_group": "tetrahedral",
+    "iterations": [
+        {
+            "operation": "subtract",
+            "primitive": "octahedron",
+            "scale_factor": 0.5,
+            "distance_factor": 1.0,
+            "smooth_radius": 0.02,
+            "apply_to": "new"
+        },
+        {
+            "operation": "add",
+            "primitive": "octahedron",
+            "scale_factor": 0.5,
+            "distance_factor": 1.0,
+            "smooth_radius": 0.01,
+            "apply_to": "new"
+        },
+        {
+            "operation": "subtract",
+            "primitive": "octahedron",
+            "scale_factor": 0.5,
+            "distance_factor": 1.0,
+            "smooth_radius": 0.005,
+            "apply_to": "new"
+        }
+    ],
+    "render": {
+        "resolution": 128,
+        "bounds": 1.8,
+        "color_mode": "iteration"
+    }
+}

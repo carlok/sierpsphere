@@ -6,7 +6,6 @@ Flask API serving:
   GET  /api/mesh/<name>       → export a named grammar as GLB
 """
 
-import json
 import io
 import os
 from pathlib import Path
@@ -14,6 +13,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
+from grammar_store import list_grammar_names, load_grammar
 from sdf import SierpSphereEvaluator, extract_mesh
 
 app = Flask(__name__)
@@ -21,24 +21,15 @@ CORS(app)
 
 GRAMMAR_DIR = Path(os.environ.get("GRAMMAR_DIR", "/app/grammar"))
 
-
-def _load_grammar(name: str) -> dict:
-    p = GRAMMAR_DIR / f"{name}.json"
-    if not p.exists():
-        raise FileNotFoundError(f"Grammar '{name}' not found")
-    return json.loads(p.read_text())
-
-
 @app.route("/api/grammar", methods=["GET"])
 def list_grammars():
-    files = sorted(p.stem for p in GRAMMAR_DIR.glob("*.json") if p.stem != "schema")
-    return jsonify(files)
+    return jsonify(list_grammar_names(GRAMMAR_DIR))
 
 
 @app.route("/api/grammar/<name>", methods=["GET"])
 def get_grammar(name: str):
     """Return the raw grammar JSON for a named preset."""
-    grammar = _load_grammar(name)
+    grammar = load_grammar(GRAMMAR_DIR, name)
     return jsonify(grammar)
 
 
@@ -68,7 +59,7 @@ def mesh_from_grammar():
 @app.route("/api/mesh/<name>", methods=["GET"])
 def mesh_named(name: str):
     """Export a named grammar file as GLB."""
-    grammar = _load_grammar(name)
+    grammar = load_grammar(GRAMMAR_DIR, name)
     ev = SierpSphereEvaluator(grammar)
     res = grammar.get("render", {}).get("resolution", 128)
     bnd = grammar.get("render", {}).get("bounds", 1.8)

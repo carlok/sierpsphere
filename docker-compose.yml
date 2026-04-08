@@ -8,6 +8,7 @@ services:
       - ./grammar:/app/grammar:ro
       - ./engine/sdf.py:/app/sdf.py:ro
       - ./engine/server.py:/app/server.py:ro
+      - ./engine/grammar_store.py:/app/grammar_store.py:ro
     environment:
       - GRAMMAR_DIR=/app/grammar
       - FLASK_DEBUG=1
@@ -20,6 +21,7 @@ services:
       - "8001:8080"
     volumes:
       - ./viewer/index.html:/usr/share/nginx/html/index.html:ro
+      - ./viewer/js:/usr/share/nginx/html/js:ro
     depends_on:
       - engine
     restart: unless-stopped
