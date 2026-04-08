@@ -1,4 +1,4 @@
-import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js";
+import { THREE } from "./three-adapter.js";
 import { buildOps, evalSDF, PRIMS } from "./sdf.js";
 import { filterLargestComponent, marchingCubes } from "./marching-cubes.js";
 import { renderHQSnapshot } from "./hq-snapshot.js";

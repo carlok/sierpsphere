@@ -14,16 +14,23 @@ sierpsphere/
 ├── sierpsphere_hq_b.png            # example HQ snapshot (bronze, tetrahedral, 3 iters)
 ├── grammar/
 │   ├── schema.json                 # JSON Schema for the grammar DSL
-│   └── sierpinski_classic.json     # sub→add→sub preset (tetrahedral, sf=0.5)
+│   ├── sierpinski_classic.json     # sphere preset
+│   ├── sierpinski_cube.json        # cube preset
+│   └── sierpinski_octahedron.json  # octahedron preset
 ├── engine/
 │   ├── Dockerfile
 │   ├── requirements.txt
+│   ├── grammar_store.py            # preset discovery + loading
 │   ├── sdf.py                      # SDF evaluator + marching cubes + GLB export
-│   └── server.py                   # Flask REST API
+│   ├── server.py                   # Flask REST API
+│   └── tests/                      # pytest unit tests
 └── viewer/
     ├── Dockerfile
     ├── nginx.conf
-    └── index.html                  # interactive viewer: marching cubes + HQ snapshot
+    ├── index.html
+    ├── js/                         # modular browser pipeline (SDF/MC/UI/HQ snapshot)
+    ├── tests/                      # vitest unit tests (jsdom + mocks)
+    └── package.json
 ```
 
 ---
@@ -122,13 +129,13 @@ podman compose down
 
 ### Rebuilding after code changes
 
-If you edit Python files (`engine/sdf.py`, `engine/server.py`):
+If you edit Python files (`engine/sdf.py`, `engine/server.py`, `engine/grammar_store.py`):
 
 ```bash
 podman compose up -d --build engine
 ```
 
-If you edit the viewer (`viewer/index.html`):
+If you edit the viewer (`viewer/index.html` or `viewer/js/*`):
 
 ```bash
 podman compose up -d --build viewer
@@ -164,6 +171,27 @@ services:
     environment:
       - FLASK_DEBUG=1
 ```
+
+---
+
+## Testing and coverage (containerized)
+
+### Python (engine)
+
+```bash
+podman compose build engine
+podman run --rm sierpsphere-engine pytest
+```
+
+### JavaScript (viewer)
+
+Run viewer tests in the Dockerfile `test` stage:
+
+```bash
+podman build --target test -t sierpsphere-viewer-test viewer
+```
+
+This executes `vitest --coverage` with DOM/WebGL-mocked tests for UI and HQ snapshot flows.
 
 ---
 
