@@ -262,7 +262,26 @@ def extract_mesh(evaluator: SierpSphereEvaluator, resolution=128, bounds=1.8):
     verts -= bounds
 
     mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=normals)
-    return mesh
+    return filter_largest_component(mesh)
+
+
+def filter_largest_component(mesh):
+    """
+    Keep only the largest connected triangle component.
+    This removes floating islands that can appear in polygonized output.
+    """
+    import trimesh
+
+    parts = mesh.split(only_watertight=False)
+    if len(parts) <= 1:
+        return mesh
+    largest = max(parts, key=lambda part: len(part.faces))
+    return trimesh.Trimesh(
+        vertices=largest.vertices.copy(),
+        faces=largest.faces.copy(),
+        vertex_normals=largest.vertex_normals.copy() if largest.vertex_normals is not None else None,
+        process=False,
+    )
 
 
 def grammar_to_gltf(grammar: dict, output_path: str = "sierpsphere.glb"):
