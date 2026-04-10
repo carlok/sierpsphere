@@ -1,6 +1,6 @@
 {
     "seed": {
-        "type": "cube",
+        "type": "sphere",
         "radius": 1.0,
         "center": [
             0,
@@ -8,11 +8,11 @@
             0
         ]
     },
-    "symmetry_group": "tetrahedral",
+    "symmetry_group": "icosahedral",
     "iterations": [
         {
-            "operation": "add",
-            "primitive": "cube",
+            "operation": "subtract",
+            "primitive": "sphere",
             "scale_factor": 0.5,
             "distance_factor": 1.0,
             "smooth_radius": 0.02,
@@ -20,18 +20,26 @@
         },
         {
             "operation": "add",
-            "primitive": "cube",
+            "primitive": "sphere",
             "scale_factor": 0.5,
             "distance_factor": 1.0,
             "smooth_radius": 0.01,
             "apply_to": "new"
         },
         {
-            "operation": "add",
-            "primitive": "cube",
+            "operation": "subtract",
+            "primitive": "sphere",
             "scale_factor": 0.5,
             "distance_factor": 1.0,
             "smooth_radius": 0.005,
+            "apply_to": "new"
+        },
+        {
+            "operation": "add",
+            "primitive": "sphere",
+            "scale_factor": 0.5,
+            "distance_factor": 1.0,
+            "smooth_radius": 0.01,
             "apply_to": "new"
         }
     ],

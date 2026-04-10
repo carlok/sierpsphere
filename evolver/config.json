@@ -1,0 +1,15 @@
+{
+  "pop_size": 24,
+  "n_epochs": 50,
+  "elitism_k": 3,
+  "tournament_k": 4,
+  "mutation_rate": 0.25,
+  "crossover_rate": 0.5,
+  "eval_resolution": 40,
+  "save_resolution": 64,
+  "save_top_k": 5,
+  "target_mm": 80.0,
+  "bounds": 1.8,
+  "gallery_dir": "/app/gallery",
+  "grammar_dir": "/app/grammar"
+}

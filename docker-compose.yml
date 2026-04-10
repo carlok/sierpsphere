@@ -10,8 +10,10 @@ services:
       - ./engine/sdf.py:/app/sdf.py:ro
       - ./engine/server.py:/app/server.py:ro
       - ./engine/grammar_store.py:/app/grammar_store.py:ro
+      - ./gallery:/app/gallery:ro
     environment:
       - GRAMMAR_DIR=/app/grammar
+      - GALLERY_DIR=/app/gallery
       - FLASK_DEBUG=1
     restart: unless-stopped
 
@@ -53,3 +55,18 @@ services:
       - ./viewer/tests:/app/tests:ro
     command: >
       sh -c "npm install --silent && npm run test:coverage"
+
+  evolver:
+    build:
+      context: ./evolver
+    profiles: [evolve]
+    working_dir: /app
+    volumes:
+      - ./grammar:/app/grammar:ro
+      - ./engine/sdf.py:/app/sdf.py:ro
+      - ./engine/grammar_store.py:/app/grammar_store.py:ro
+      - ./evolver/config.json:/app/config.json:ro
+      - ./gallery:/app/gallery
+    environment:
+      - GRAMMAR_DIR=/app/grammar
+    command: ["python", "evolver.py"]

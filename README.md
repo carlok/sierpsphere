@@ -180,6 +180,66 @@ This executes `vitest --coverage` with DOM/WebGL-mocked tests for UI and HQ snap
 
 ---
 
+## Grammar notation
+
+Every SierpSphere grammar has a compact one-line name — readable, writable, and fully reconstructible. It follows the structure:
+
+```
+Γ = Group[Seed] : step₁ · step₂ · … · stepₙ
+```
+
+### Alphabet
+
+| Symbol | Meaning |
+|--------|---------|
+| `Td` `Oh` `Ih` | Symmetry group: tetrahedral · octahedral · icosahedral (Schoenflies) |
+| `S` `C` `O` | Seed primitive: sphere · cube · octahedron |
+| `-` `+` `x` | Operation: subtract · add · intersect |
+| `s` `c` `o` | Step primitive: sphere · cube · octahedron |
+
+### Step encoding
+
+```
+{op}{prim}{ρ̃}[:{σ̃}][@{δ}]
+```
+
+| Field | Encoding | Example |
+|-------|----------|---------|
+| `smooth_radius` (ρ) | integer × 0.005 | `0.02` → `4` |
+| `scale_factor` (σ) | omit when 0.50; else integer % | `0.47` → `:47` |
+| `distance_factor` (δ) | omit when 1.0; else float | `1.1` → `@1.1` |
+
+### Named grammars
+
+```
+Td.S. -s4 +s2 -s1            sierpinski_classic
+Td.O. -o4 +o2 -o1            sierpinski_octahedron
+Td.C. +c4 +c2 +c1            sierpinski_cube
+Ih.S. -s4 +s2 -s1 +s2        sierpinski_void
+```
+
+An evolved mutant might look like:
+```
+Td.S. -s5:47 +c3:52@1.1 -s1
+```
+
+### Filename slugs (POSIX-safe)
+
+The display notation uses `+` `:` `@` which are shell-unfriendly. Filenames use a safe equivalent — ops become uppercase letters, suffixes use `k` (scale) and `d` (distance):
+
+```
+Display:  Td.S.-s4 +s2 -s1
+Slug:     Td.S.Ns4Ps2Ns1
+```
+
+Op map: `-`→`N` (Nix), `+`→`P` (Plus), `x`→`X`. Scale `:47`→`k47`. Distance `@1.1`→`d110`.
+
+Gallery filenames use the slug: `rank_01_Td.S.Ns4Ps2Ns1.glb`
+
+Full notation reference: [`tex/notation.tex`](tex/notation.tex)
+
+---
+
 ## Creating custom grammars
 
 Drop a new JSON file into `grammar/`. The engine picks it up automatically (the directory is mounted into the container).

@@ -19,3 +19,9 @@ venv/
 .claude/
 
 gallery/
+
+*.aux
+*.log
+*.out
+*.pdf
+*.gz

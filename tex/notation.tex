@@ -1,0 +1,184 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\geometry{margin=2.8cm}
+
+\title{\textbf{SierpSphere Grammar Notation}\\
+       \large A compact symbolic language for fractal SDF grammars}
+\author{}
+\date{}
+
+\newcommand{\G}[1]{\mathsf{#1}}          % group symbol
+\newcommand{\prim}[1]{\mathrm{#1}}       % primitive symbol
+\newcommand{\sub}{\ominus}               % subtract
+\newcommand{\add}{\oplus}                % add
+\newcommand{\intr}{\cap}                 % intersect
+\newcommand{\step}[4]{#1_{\prim{#2}}^{#3}{}_{#4}}   % op_P^sigma_rho
+\newcommand{\stepd}[5]{#1_{\prim{#2}}^{#3}({#4})_{#5}} % op_P^sigma(delta)_rho
+\newcommand{\gram}[2]{\G{#1}[\prim{#2}]}  % group[seed]
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+% ── 1. Motivation ──────────────────────────────────────────────────────────
+\section*{Motivation}
+
+A SierpSphere grammar is fully specified by three things: a \emph{symmetry group},
+a \emph{seed primitive}, and an ordered list of \emph{iteration steps}.
+The JSON representation is verbose; this notation condenses a grammar to a
+single line amenable to comparison, mutation logging, and typeset publication.
+
+% ── 2. Alphabet ────────────────────────────────────────────────────────────
+\section*{Alphabet}
+
+\paragraph{Symmetry groups} (Schoenflies notation)
+\[
+  \G{T_d} \quad \G{O_h} \quad \G{I_h}
+\]
+corresponding to \textit{tetrahedral}, \textit{octahedral}, and
+\textit{icosahedral} point groups respectively.
+
+\paragraph{Primitives}
+\[
+  \prim{S} = \text{sphere} \qquad
+  \prim{C} = \text{cube}   \qquad
+  \prim{O} = \text{octahedron}
+\]
+
+\paragraph{Operations}
+\[
+  \sub = \text{smooth-subtract} \qquad
+  \add = \text{smooth-union}    \qquad
+  \intr = \text{smooth-intersect}
+\]
+
+% ── 3. Step notation ───────────────────────────────────────────────────────
+\section*{Step notation}
+
+A single iteration step carrying parameters
+$(\sigma, \delta, \rho) \in (0,1)\times\mathbb{R}_{>0}\times\mathbb{R}_{\ge 0}$
+is written:
+
+\[
+  \boxed{\; \mathrm{op}_{\prim{P}}^{\,\sigma}(\delta)_{\rho} \;}
+\]
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Symbol & Parameter & Default (omit when) \\
+\midrule
+$\sigma$ & \texttt{scale\_factor} — child size relative to parent & — (always shown) \\
+$\delta$ & \texttt{distance\_factor} — placement along symmetry axis & 1 (omit when $\delta=1$) \\
+$\rho$   & \texttt{smooth\_radius} — Boolean blending width & 0 (omit when $\rho=0$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent Examples of a single step:
+\[
+  \sub_{\prim{S}}^{0.5}{}_{\!0.02}
+  \qquad
+  \add_{\prim{C}}^{0.3}(1.2)_{\!0.05}
+  \qquad
+  \intr_{\prim{O}}^{0.45}
+\]
+
+% ── 4. Full grammar formula ────────────────────────────────────────────────
+\section*{Full grammar formula}
+
+\[
+  \boxed{\;
+    \Gamma \;=\; \G{G}[\prim{P_0}] \;:\; s_1 \cdot s_2 \cdots s_n
+  \;}
+\]
+
+where $\G{G}$ is the symmetry group, $\prim{P_0}$ the seed primitive, and
+$s_1, \ldots, s_n$ are steps applied in order.
+Steps act on \emph{new} nodes by default; a trailing ${}^{\!\star}$
+marks \texttt{apply\_to: all}.
+
+% ── 5. Named grammars ──────────────────────────────────────────────────────
+\section*{Named grammars}
+
+\newcommand{\half}{\tfrac{1}{2}}
+
+\paragraph{\texttt{sierpinski\_classic}}
+Classic tetrahedral Sierpi\'nski gasket from a sphere seed,
+alternating subtract / union / subtract with decreasing smoothness.
+\[
+  \Gamma_{\mathrm{classic}}
+  = \G{T_d}[\prim{S}]
+  : \sub_{\prim{S}}^{\half}{}_{\!0.02}
+  \cdot \add_{\prim{S}}^{\half}{}_{\!0.01}
+  \cdot \sub_{\prim{S}}^{\half}{}_{\!0.005}
+\]
+
+\paragraph{\texttt{sierpinski\_octahedron}}
+Same alternating pattern, octahedron seed and primitives under $\G{T_d}$.
+\[
+  \Gamma_{\mathrm{oct}}
+  = \G{T_d}[\prim{O}]
+  : \sub_{\prim{O}}^{\half}{}_{\!0.02}
+  \cdot \add_{\prim{O}}^{\half}{}_{\!0.01}
+  \cdot \sub_{\prim{O}}^{\half}{}_{\!0.005}
+\]
+
+\paragraph{\texttt{sierpinski\_cube}}
+Pure additive cube fractal — each step unions scaled cubes
+along tetrahedral axes.
+\[
+  \Gamma_{\mathrm{cube}}
+  = \G{T_d}[\prim{C}]
+  : \add_{\prim{C}}^{\half}{}_{\!0.02}
+  \cdot \add_{\prim{C}}^{\half}{}_{\!0.01}
+  \cdot \add_{\prim{C}}^{\half}{}_{\!0.005}
+\]
+
+\paragraph{\texttt{sierpinski\_void}}
+Four-step icosahedral grammar producing high-genus void structure.
+\[
+  \Gamma_{\mathrm{void}}
+  = \G{I_h}[\prim{S}]
+  : \sub_{\prim{S}}^{\half}{}_{\!0.02}
+  \cdot \add_{\prim{S}}^{\half}{}_{\!0.01}
+  \cdot \sub_{\prim{S}}^{\half}{}_{\!0.005}
+  \cdot \add_{\prim{S}}^{\half}{}_{\!0.01}
+\]
+
+% ── 6. Mutation shorthand ──────────────────────────────────────────────────
+\section*{Mutation shorthand}
+
+During evolution, a grammar can be reported as a delta from a named parent:
+\[
+  \Gamma' = \Gamma_{\mathrm{classic}}
+  \;\Big[\;
+    s_1 \mapsto \sub_{\prim{S}}^{0.47}{}_{\!0.025},\quad
+    s_3 \mapsto \sub_{\prim{C}}^{0.53}{}_{\!0.003}
+  \;\Big]
+\]
+or as a crossover product:
+\[
+  \Gamma' = \Gamma_{\mathrm{classic}}[{:}2] \mathbin{|} \Gamma_{\mathrm{void}}[2{:}]
+\]
+meaning: steps 1–2 from \emph{classic}, steps 3–4 from \emph{void}.
+
+% ── 7. Fitness annotation ──────────────────────────────────────────────────
+\section*{Fitness annotation}
+
+A fully evaluated grammar is annotated:
+\[
+  \Gamma_{\mathrm{void}} \xrightarrow{\;\mathcal{F}\;}
+  \bigl(\,f = 0.734,\; d_f = 2.51,\; t_{\min} = 0.82\,\mathrm{mm}\bigr)
+\]
+where $f$ is total fitness, $d_f$ the estimated fractal dimension,
+and $t_{\min}$ the minimum wall thickness at $80\,\mathrm{mm}$ scale.
+
+\end{document}
