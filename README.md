@@ -210,55 +210,15 @@ Every SierpSphere grammar has a compact one-line name — readable, writable, an
 Γ = Group[Seed] : step₁ · step₂ · … · stepₙ
 ```
 
-### Alphabet
+Full formal notation with alphabet, step encoding, and named grammar examples: [`tex/notation.tex`](tex/notation.tex)
 
-| Symbol | Meaning |
-|--------|---------|
-| `Td` `Oh` `Ih` | Symmetry group: tetrahedral · octahedral · icosahedral (Schoenflies) |
-| `S` `C` `O` | Seed primitive: sphere · cube · octahedron |
-| `-` `+` `x` | Operation: subtract · add · intersect |
-| `s` `c` `o` | Step primitive: sphere · cube · octahedron |
-
-### Step encoding
-
+Quick examples:
 ```
-{op}{prim}{ρ̃}[:{σ̃}][@{δ}]
+Td.S. -s4 +s2 -s1      sierpinski_classic   (display)
+Td.S.Ns4Ps2Ns1         rank_01_...glb       (POSIX filename slug)
 ```
-
-| Field | Encoding | Example |
-|-------|----------|---------|
-| `smooth_radius` (ρ) | integer × 0.005 | `0.02` → `4` |
-| `scale_factor` (σ) | omit when 0.50; else integer % | `0.47` → `:47` |
-| `distance_factor` (δ) | omit when 1.0; else float | `1.1` → `@1.1` |
-
-### Named grammars
-
-```
-Td.S. -s4 +s2 -s1            sierpinski_classic
-Td.O. -o4 +o2 -o1            sierpinski_octahedron
-Td.C. +c4 +c2 +c1            sierpinski_cube
-Ih.S. -s4 +s2 -s1 +s2        sierpinski_void
-```
-
-An evolved mutant might look like:
-```
-Td.S. -s5:47 +c3:52@1.1 -s1
-```
-
-### Filename slugs (POSIX-safe)
-
-The display notation uses `+` `:` `@` which are shell-unfriendly. Filenames use a safe equivalent — ops become uppercase letters, suffixes use `k` (scale) and `d` (distance):
-
-```
-Display:  Td.S.-s4 +s2 -s1
-Slug:     Td.S.Ns4Ps2Ns1
-```
-
-Op map: `-`→`N` (Nix), `+`→`P` (Plus), `x`→`X`. Scale `:47`→`k47`. Distance `@1.1`→`d110`.
 
 Gallery filenames use the slug: `rank_01_Td.S.Ns4Ps2Ns1.glb`
-
-Full notation reference: [`tex/notation.tex`](tex/notation.tex)
 
 ---
 
@@ -346,28 +306,9 @@ podman compose --profile evolve build evolver
 podman compose --profile evolve run --rm evolver python evolver.py
 ```
 
-### GA design
+Full GA design, fitness function, and Metal acceleration rationale: [`tex/journey.tex`](tex/journey.tex)
 
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| Population | 24 | Equal thirds: sphere / cube / octahedron seeds |
-| Tournament k | 2 | Weak selection — preserves diversity |
-| Elitism | 2 global + 1 per seed type | Cubes/octahedra never go extinct |
-| Mutation rate | 0.35 | Numeric jitter + categorical swap + add/remove step |
-| Crossover rate | 0.5 | Single-point on iteration-step list |
-| Eval resolution | 28³ | ~3 s/individual on M-series |
-| Save resolution | 64³ | Epoch winner saved at higher quality |
-
-### Fitness function (15 metrics, weights sum to 1.0)
-
-**Hard gates** (failure → fitness = 0):
-- Single connected component (no floating islands)
-- Watertight mesh (no enclosed powder traps)
-- Minimum wall thickness ≥ 0.3 mm at 80 mm scale
-
-**Aesthetic** (53%): fractal dimension · curvature variance · genus · normalised S/V · aspect ratio · symmetry preservation · silhouette complexity · primitive diversity
-
-**Manufacturing** (47%): min wall thickness · min feature size · drain openings · thermal mass uniformity · support volume ratio · enclosed voids · no islands
+GA hyperparameters: [`evolver/config.json`](evolver/config.json)
 
 Gallery output is written to `gallery/` (gitignored):
 ```
