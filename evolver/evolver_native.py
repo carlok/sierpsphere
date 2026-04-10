@@ -84,10 +84,11 @@ def _worker_eval(args):
     return evaluate_individual(grammar, cfg)
 
 
-def evaluate_population(population: list[dict], cfg: dict) -> list[dict]:
+def evaluate_population(population: list[dict], cfg: dict, max_workers: int = 0) -> list[dict]:
     """Evaluate population in parallel — one MPS context per worker process."""
     import multiprocessing as mp
-    n_workers = min(len(population), mp.cpu_count())
+    cap = max_workers if max_workers > 0 else mp.cpu_count()
+    n_workers = min(len(population), cap)
 
     # 'spawn' is required on macOS (fork + MPS = crash)
     ctx = mp.get_context("spawn")
@@ -245,9 +246,11 @@ def run(args):
     gallery = Path(cfg["gallery_dir"])
     gallery.mkdir(parents=True, exist_ok=True)
 
+    import multiprocessing as mp
+    workers = args.workers if args.workers > 0 else mp.cpu_count()
     print(f"Device: {device_info()}")
     print(f"eval_res={cfg['eval_resolution']}  save_res={cfg['save_resolution']}  "
-          f"pop={cfg['pop_size']}  epochs={n_epochs}")
+          f"pop={cfg['pop_size']}  epochs={n_epochs}  workers={workers}")
 
     pop_file = gallery / "population.json"
     if args.resume and pop_file.exists():
@@ -264,7 +267,7 @@ def run(args):
         ts = time.strftime("%H:%M:%S")
         print(f"\n[{ts}] Epoch {epoch:04d} — evaluating {len(population)} individuals…")
         t0 = time.time()
-        results = evaluate_population(population, cfg)
+        results = evaluate_population(population, cfg, args.workers)
         elapsed = time.time() - t0
 
         print_epoch(epoch, population, results, elapsed)
@@ -284,4 +287,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=0)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--workers", type=int, default=0,
+                        help="Max parallel workers (0 = all cores)")
     run(parser.parse_args())
