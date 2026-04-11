@@ -149,6 +149,15 @@ def save_epoch(epoch, population, results, cfg, elapsed):
         try:
             mesh = extract_mesh_metal(grammar, resolution=res, bounds=cfg["bounds"])
             if mesh and len(mesh.faces) > 0:
+                # At save_res the mesh may split vs eval_res — keep largest component only
+                parts = mesh.split(only_watertight=False)
+                if len(parts) > 1:
+                    mesh = max(parts, key=lambda p: len(p.faces))
+                    mesh = trimesh.Trimesh(
+                        vertices=mesh.vertices.copy(),
+                        faces=mesh.faces.copy(),
+                        process=False,
+                    )
                 glb_path = epoch_dir / f"rank_{rank+1:02d}_{slug}.glb"
                 mesh.export(str(glb_path))
                 m = mesh.copy()
