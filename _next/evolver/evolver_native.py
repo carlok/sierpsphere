@@ -213,7 +213,7 @@ def next_generation(population, results, cfg):
     next_pop = [copy.deepcopy(population[i]) for i in ranked[:cfg["elitism_k"]]]
 
     # Type elitism: keep best viable of each seed type
-    for prim in ["sphere", "cube", "octahedron"]:
+    for prim in ["tetrahedron", "cube", "icosahedron"]:
         best_idx = next(
             (i for i in ranked
              if population[i].get("seed", {}).get("type") == prim

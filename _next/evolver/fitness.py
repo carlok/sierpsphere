@@ -9,9 +9,8 @@ import trimesh
 
 # ── Weights (must sum to 1.0) ─────────────────────────────────────────────
 WEIGHTS = {
-    "fractal_dimension":     0.13,
-    "curvature_variance":    0.09,
-    "symmetry_preservation": 0.08,
+    "fractal_dimension":     0.16,
+    "curvature_variance":    0.12,
     "normalised_S_V":        0.08,
     "genus":                 0.05,
     "aspect_ratio":          0.03,
@@ -24,7 +23,7 @@ WEIGHTS = {
     "support_volume_ratio":  0.05,
     "silhouette_complexity": 0.05,
     "primitive_diversity":   0.02,
-    "fill_ratio":            0.03,
+    "fill_ratio":            0.05,
 }
 
 
@@ -60,7 +59,6 @@ def compute_fitness(
     scores["curvature_variance"]    = _curvature_variance(mesh)
     scores["fractal_dimension"]     = _fractal_dimension(mesh)
     scores["aspect_ratio"]          = _aspect_ratio(mesh)
-    scores["symmetry_preservation"] = _symmetry(mesh, grammar)
     scores["silhouette_complexity"] = _silhouette(mesh)
     scores["primitive_diversity"]   = _primitive_diversity(grammar)
 
@@ -152,36 +150,6 @@ def _aspect_ratio(mesh: trimesh.Trimesh) -> float:
     if ratio >= 10:
         return 0.0
     return float(1.0 - (ratio - 3) / 7)
-
-
-def _symmetry(mesh: trimesh.Trimesh, grammar: dict) -> float:
-    """Fraction of vertices that have a symmetry-group mirror within tolerance."""
-    try:
-        sym = grammar.get("symmetry_group", "tetrahedral")
-        axes = _sym_axes(sym)
-        if not axes:
-            return 0.5
-        verts = mesh.vertices
-        hit = 0
-        tol = mesh.scale * 0.02
-        tree = trimesh.proximity.ProximityQuery(mesh)
-        for v in axes:
-            # reflect each vertex across the plane with normal v
-            reflected = verts - 2 * np.outer(verts @ v, v)
-            dists, _ = tree.vertex(reflected)
-            hit += np.sum(dists < tol)
-        return float(np.clip(hit / (len(axes) * len(verts)), 0, 1))
-    except Exception:
-        return 0.5
-
-
-def _sym_axes(sym: str) -> list:
-    s = 1 / np.sqrt(3)
-    if sym == "tetrahedral":
-        return [np.array(v) for v in [[s,s,s],[s,-s,-s],[-s,s,-s],[-s,-s,s]]]
-    if sym == "octahedral":
-        return [np.array(v) for v in [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]]
-    return []
 
 
 def _silhouette(mesh: trimesh.Trimesh) -> float:
