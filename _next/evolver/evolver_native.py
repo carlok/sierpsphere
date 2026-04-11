@@ -126,6 +126,21 @@ def save_epoch(epoch, population, results, cfg, elapsed):
         grammar = population[idx]
         result = results[idx]
         slug = grammar_slug(grammar)
+        viable = result["fitness"] > 0.0
+
+        # Grammar JSON: viable only
+        if not viable:
+            saved.append({
+                "rank": rank + 1,
+                "name": grammar_name(grammar),
+                "slug": slug,
+                "fitness": 0.0,
+                "hard_gate_failed": result.get("hard_gate_failed"),
+                "scores": {},
+                "manufacturing_note": result.get("manufacturing_note", ""),
+                "grammar_file": None,
+            })
+            continue
 
         grammar_path = epoch_dir / f"rank_{rank+1:02d}_{slug}_grammar.json"
         grammar_path.write_text(json.dumps(grammar, indent=2))
@@ -148,7 +163,7 @@ def save_epoch(epoch, population, results, cfg, elapsed):
             "name": grammar_name(grammar),
             "slug": slug,
             "fitness": result["fitness"],
-            "hard_gate_failed": result.get("hard_gate_failed"),
+            "hard_gate_failed": None,
             "scores": result.get("scores", {}),
             "manufacturing_note": result.get("manufacturing_note", ""),
             "grammar_file": grammar_path.name,
