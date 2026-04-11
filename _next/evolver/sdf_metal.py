@@ -312,7 +312,7 @@ def extract_mesh_metal(
         return None
     spacing = (2 * bounds) / (resolution - 1)
     try:
-        verts, faces, _, _ = marching_cubes(grid, level=0.0, spacing=(spacing,) * 3)
+        verts, faces, _, _ = marching_cubes(grid, level=0.01, spacing=(spacing,) * 3)
     except Exception:
         return None
     verts -= bounds

@@ -54,7 +54,7 @@ def random_grammar_pure(
             "primitive":     random.choice(CHILD_PRIMITIVES),
             "fd_u":          round(u, 4),
             "fd_v":          round(v, 4),
-            "distance":      round(random.uniform(0.5, 1.1), 3),
+            "distance":      round(random.uniform(0.5, 1.0), 3),
             "scale_factor":  round(random.uniform(0.2, 0.55), 3),
             "smooth_radius": round(random.uniform(0.0, 0.06), 4),
         })
@@ -120,7 +120,7 @@ def mutate(grammar: dict, rate: float = 0.55) -> dict:
             it["fd_v"] = round(v, 4)
 
         if random.random() < rate:
-            it["distance"] = _jitter(it.get("distance", 0.7), 0.15, 0.3, 1.4)
+            it["distance"] = _jitter(it.get("distance", 0.7), 0.15, 0.3, 1.0)
         if random.random() < rate:
             it["scale_factor"] = _jitter(it.get("scale_factor", 0.3), 0.12, 0.1, 0.65)
         if random.random() < rate:
@@ -140,7 +140,7 @@ def mutate(grammar: dict, rate: float = 0.55) -> dict:
             "primitive":     random.choice(CHILD_PRIMITIVES),
             "fd_u":          round(u, 4),
             "fd_v":          round(v, 4),
-            "distance":      round(random.uniform(0.5, 1.1), 3),
+            "distance":      round(random.uniform(0.5, 1.0), 3),
             "scale_factor":  round(random.uniform(0.2, 0.55), 3),
             "smooth_radius": round(random.uniform(0.0, 0.06), 4),
         })
