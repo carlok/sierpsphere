@@ -149,7 +149,7 @@ def save_epoch(epoch, population, results, cfg, elapsed):
                 parts = mesh.split(only_watertight=False)
                 if len(parts) > 1:
                     max_faces = max(len(p.faces) for p in parts)
-                    parts = [p for p in parts if len(p.faces) >= max_faces * 0.05]
+                    parts = [p for p in parts if len(p.faces) >= max_faces * 0.15]
                     mesh = trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
                     mesh = trimesh.Trimesh(
                         vertices=mesh.vertices.copy(),

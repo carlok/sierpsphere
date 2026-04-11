@@ -187,8 +187,9 @@ def crossover(parent_a: dict, parent_b: dict) -> tuple[dict, dict]:
     # child_b: steps from parent_b[:cut] + parent_a[cut:]
     raw_b = steps_b[:cut_b] + steps_a[cut_a:]
 
-    a["iterations"] = _fix_fd(raw_a, group_a, donor_group=group_b, cut=cut_a) or steps_a
-    b["iterations"] = _fix_fd(raw_b, group_b, donor_group=group_a, cut=cut_b) or steps_b
+    MAX = 5
+    a["iterations"] = (_fix_fd(raw_a, group_a, donor_group=group_b, cut=cut_a) or steps_a)[:MAX]
+    b["iterations"] = (_fix_fd(raw_b, group_b, donor_group=group_a, cut=cut_b) or steps_b)[:MAX]
 
     return a, b
 
