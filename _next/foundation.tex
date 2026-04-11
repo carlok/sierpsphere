@@ -1,3 +1,4 @@
+\PassOptionsToPackage{dvipsnames}{xcolor}
 \documentclass[11pt, a4paper]{article}
 
 \usepackage[T1]{fontenc}
@@ -339,7 +340,7 @@ $f_n$ is G-invariant for any choice of $(b_i, P_i, \phi_i, k_i, s_i)$.
 This follows by induction from \cref{eq:invariant}, \cref{eq:symg}, and the
 closure proposition above.
 
-\subsection{Bijection: Seed $\leftrightarrow$ Group}
+\subsection{Bijection: Seed \texorpdfstring{$\leftrightarrow$}{<->} Group}
 
 The assignment $G(\mathrm{seed})$ is a bijection:
 \begin{equation}
@@ -533,7 +534,7 @@ metal powder with a laser. Relevant constraints for generative design:
 
 \begin{description}
   \item[Layer thickness] Typically $20$--$60\,\mu\mathrm{m}$. Surfaces
-    angled below $\approx 45°$ from horizontal require support structures.
+    angled below $\approx 45^\circ$ from horizontal require support structures.
   \item[Minimum feature] Limited by laser spot diameter ($\approx 30$--$100\,\mu\mathrm{m}$) and thermal diffusion. We gate on $0.3\,\mathrm{mm}$.
   \item[Enclosed cavities] Trapped powder cannot be removed post-print; the watertightness gate prevents this structurally.
   \item[Thermal gradients] Uneven mass distribution causes residual stress and warping; the thermal mass variance metric rewards octant uniformity.
