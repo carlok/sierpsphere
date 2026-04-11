@@ -27,7 +27,8 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(Path(__file__).parent))  # fitness.py, mutate.py, grammar_name.py, sdf_metal.py
 
 from fitness import compute_fitness
-from mutate import crossover, mutate, diverse_population, tournament_select
+from mutate import (crossover, mutate, diverse_population, tournament_select,
+                    resonant_population)
 from grammar_name import grammar_name, grammar_slug
 from sdf_metal import extract_mesh_metal, device_info
 
@@ -211,14 +212,27 @@ def print_epoch(epoch, population, results, elapsed):
 
 # ── Seed population ───────────────────────────────────────────────────────────
 
-def build_seed_population(cfg):
-    """Diverse random population — equal thirds of each seed type."""
-    return diverse_population(cfg["pop_size"])
+def build_seed_population(cfg, mode: str = "continuous"):
+    """Seed population — mode selects grammar vocabulary.
+
+    continuous : fully random (u,v,distance) in [0,1]² / [0.3,1.0]
+    resonant   : group-theoretically natural values only
+    mixed      : equal halves continuous + resonant
+    """
+    n = cfg["pop_size"]
+    if mode == "resonant":
+        return resonant_population(n)
+    if mode == "mixed":
+        half = n // 2
+        pop = diverse_population(half) + resonant_population(n - half)
+        import random as _rnd; _rnd.shuffle(pop)
+        return pop
+    return diverse_population(n)
 
 
 # ── GA ────────────────────────────────────────────────────────────────────────
 
-def next_generation(population, results, cfg):
+def next_generation(population, results, cfg, mode: str = "continuous"):
     fitnesses = [r["fitness"] for r in results]
     ranked = sorted(range(len(fitnesses)), key=lambda i: fitnesses[i], reverse=True)
     next_pop = [copy.deepcopy(population[i]) for i in ranked[:cfg["elitism_k"]]]
@@ -234,11 +248,17 @@ def next_generation(population, results, cfg):
         )
         if best_idx is not None:
             next_pop.append(copy.deepcopy(population[best_idx]))
-    # Fresh blood: inject random individuals to prevent convergence
-    n_fresh = max(1, cfg["pop_size"] // 8)  # ~12% fresh each epoch
+    # Fresh blood: inject random individuals to prevent convergence (~12% per epoch)
+    n_fresh = max(1, cfg["pop_size"] // 8)
+    if mode == "resonant":
+        _fresh_fn = resonant_population
+    elif mode == "mixed":
+        _fresh_fn = resonant_population if np.random.random() < 0.5 else diverse_population
+    else:
+        _fresh_fn = diverse_population
     for _ in range(n_fresh):
         if len(next_pop) < cfg["pop_size"]:
-            next_pop.extend(diverse_population(1))
+            next_pop.extend(_fresh_fn(1))
 
     while len(next_pop) < cfg["pop_size"]:
         if np.random.random() < cfg["crossover_rate"] and len(population) >= 2:
@@ -265,9 +285,10 @@ def run(args):
 
     import multiprocessing as mp
     workers = args.workers if args.workers > 0 else mp.cpu_count()
+    mode = args.mode
     print(f"Device: {device_info()}")
     print(f"eval_res={cfg['eval_resolution']}  save_res={cfg['save_resolution']}  "
-          f"pop={cfg['pop_size']}  epochs={n_epochs}  workers={workers}")
+          f"pop={cfg['pop_size']}  epochs={n_epochs}  workers={workers}  mode={mode}")
 
     pop_file = gallery / "population.json"
     if args.resume and pop_file.exists():
@@ -275,9 +296,9 @@ def run(args):
         start_epoch = len(json.loads((gallery / "manifest.json").read_text())) + 1
         print(f"Resuming from epoch {start_epoch} ({len(population)} individuals)")
     else:
-        population = build_seed_population(cfg)
+        population = build_seed_population(cfg, mode)
         start_epoch = 1
-        print(f"Starting fresh: {len(population)} individuals")
+        print(f"Starting fresh ({mode}): {len(population)} individuals")
     print("-" * 70)
 
     for epoch in range(start_epoch, start_epoch + n_epochs):
@@ -290,7 +311,7 @@ def run(args):
         print_epoch(epoch, population, results, elapsed)
         save_epoch(epoch, population, results, cfg, elapsed)
         pop_file.write_text(json.dumps(population, indent=2))
-        population = next_generation(population, results, cfg)
+        population = next_generation(population, results, cfg, mode)
 
     print("=" * 70)
     print("Evolution complete.")
@@ -306,4 +327,8 @@ if __name__ == "__main__":
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--workers", type=int, default=0,
                         help="Max parallel workers (0 = all cores)")
+    parser.add_argument("--mode", choices=["continuous", "resonant", "mixed"],
+                        default="continuous",
+                        help="Grammar vocabulary: continuous (random), "
+                             "resonant (group-natural values), mixed (half/half)")
     run(parser.parse_args())
