@@ -111,10 +111,11 @@ def mutate(grammar: dict, rate: float = 0.55) -> dict:
         if random.random() < rate:
             u = it.get("fd_u", 0.3)
             v = it.get("fd_v", 0.1)
-            u = float(max(0.0, min(1.0, u + random.gauss(0, 0.22))))
-            v = float(max(0.0, min(1.0, v + random.gauss(0, 0.22))))
-            if u + v > 1.0:
-                total = u + v
+            e = _FD_EPS
+            u = float(max(e, min(1.0 - 2 * e, u + random.gauss(0, 0.22))))
+            v = float(max(e, min(1.0 - e - u, v + random.gauss(0, 0.22))))
+            if u + v > 1.0 - e:
+                total = (u + v) / (1.0 - e)
                 u, v = u / total, v / total
             it["fd_u"] = round(u, 4)
             it["fd_v"] = round(v, 4)
@@ -204,11 +205,21 @@ def tournament_select(
 
 # ── Internals ──────────────────────────────────────────────────────────────────
 
+_FD_EPS = 0.07  # minimum barycentric distance from each corner
+                # corners are high-symmetry points where orbit copies
+                # pile up, creating thin spurs at intersection boundaries
+
 def _random_fd() -> tuple[float, float]:
-    """Sample (u, v) uniformly in the valid barycentric region u+v≤1."""
-    u = random.random()
-    v = random.uniform(0, 1 - u)
-    return u, v
+    """Sample (u, v) uniformly in the inset barycentric region.
+    Avoids corners (within _FD_EPS of each vertex) where symmetry
+    axes cause orbit copies to nearly coincide, producing peninsulas.
+    """
+    e = _FD_EPS
+    while True:
+        u = random.uniform(e, 1.0 - 2 * e)
+        v = random.uniform(e, 1.0 - e - u)
+        if u + v <= 1.0 - e:
+            return u, v
 
 
 def _jitter(value: float, rel: float, lo: float, hi: float) -> float:
