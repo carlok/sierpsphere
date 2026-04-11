@@ -24,11 +24,8 @@ import trimesh
 
 # ── Path setup ───────────────────────────────────────────────────────────────
 ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(ROOT / "engine"))   # sdf.py, grammar_store.py
-sys.path.insert(0, str(Path(__file__).parent))  # fitness.py, mutate.py, grammar_name.py
+sys.path.insert(0, str(Path(__file__).parent))  # fitness.py, mutate.py, grammar_name.py, sdf_metal.py
 
-from sdf import SierpSphereEvaluator
-from grammar_store import list_grammar_names, load_grammar  # kept for --resume path
 from fitness import compute_fitness
 from mutate import crossover, mutate, diverse_population, tournament_select
 from grammar_name import grammar_name, grammar_slug
@@ -49,7 +46,6 @@ def load_config() -> dict:
         if not Path(p).is_absolute():
             return str(ROOT / p)
         return p
-    cfg["grammar_dir"] = remap(cfg["grammar_dir"])
     cfg["gallery_dir"] = remap(cfg["gallery_dir"])
     return cfg
 
