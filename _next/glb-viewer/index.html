@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLB Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    background: #111;
+    color: #ddd;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Canvas ── */
+  #canvas-wrap {
+    flex: 1;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Drop overlay */
+  #drop-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(0,0,0,0.72);
+    color: #aaa;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #drop-overlay.hidden { opacity: 0; }
+  #drop-overlay svg { opacity: 0.4; }
+  #drop-overlay p { font-size: 15px; }
+  #drop-overlay small { font-size: 11px; opacity: 0.6; }
+
+  #drop-highlight {
+    position: absolute;
+    inset: 8px;
+    border: 2px dashed #555;
+    border-radius: 12px;
+    pointer-events: none;
+  }
+
+  /* ── Panel ── */
+  #panel {
+    width: 260px;
+    min-width: 260px;
+    background: #1a1a1a;
+    border-left: 1px solid #2a2a2a;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #panel h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    padding: 16px 16px 10px;
+    border-bottom: 1px solid #252525;
+  }
+
+  .section {
+    padding: 12px 16px;
+    border-bottom: 1px solid #222;
+  }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  /* File button */
+  #file-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 0;
+    background: #2a2a2a;
+    border: 1px solid #383838;
+    border-radius: 6px;
+    color: #bbb;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: center;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+  }
+  #file-btn:hover { background: #333; color: #fff; }
+
+  #file-name {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Material presets */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .preset-btn {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 3px;
+    font-size: 8px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    transition: border-color 0.15s, transform 0.1s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: relative;
+    overflow: hidden;
+  }
+  .preset-btn:hover { transform: scale(1.06); }
+  .preset-btn.active { border-color: #fff; }
+
+  /* Sliders */
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .row:last-child { margin-bottom: 0; }
+
+  .row label {
+    width: 80px;
+    flex-shrink: 0;
+    color: #777;
+    font-size: 11px;
+  }
+
+  .row input[type=range] {
+    flex: 1;
+    height: 3px;
+    accent-color: #aaa;
+    cursor: pointer;
+  }
+
+  .row .val {
+    width: 30px;
+    text-align: right;
+    color: #999;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Color inputs */
+  .row input[type=color] {
+    width: 32px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+  }
+
+  /* Background options */
+  .bg-options {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .bg-tab {
+    flex: 1;
+    padding: 5px 0;
+    border-radius: 5px;
+    border: 1px solid #333;
+    background: #222;
+    color: #777;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .bg-tab.active { background: #333; color: #ccc; border-color: #444; }
+
+  .bg-panel { display: none; }
+  .bg-panel.active { display: block; }
+
+  /* Env presets */
+  .env-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .env-btn {
+    padding: 6px 0;
+    border-radius: 5px;
+    border: 1px solid #333;
+    background: #222;
+    color: #888;
+    font-size: 10px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .env-btn:hover, .env-btn.active { background: #333; color: #ddd; border-color: #555; }
+
+  /* Image upload */
+  #bg-img-btn {
+    width: 100%;
+    padding: 7px 0;
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 5px;
+    color: #888;
+    cursor: pointer;
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  #bg-img-btn:hover { background: #2a2a2a; color: #ccc; }
+
+  /* Lights */
+  .light-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .light-row label { width: 70px; flex-shrink: 0; color: #777; font-size: 11px; }
+  .light-row .dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* Reset */
+  #reset-btn {
+    width: 100%;
+    padding: 7px 0;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 5px;
+    color: #666;
+    cursor: pointer;
+    font-size: 11px;
+    margin-top: 4px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #reset-btn:hover { border-color: #555; color: #aaa; }
+
+  /* Scrollbar */
+  #panel::-webkit-scrollbar { width: 4px; }
+  #panel::-webkit-scrollbar-track { background: transparent; }
+  #panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ── Viewport ── -->
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="drop-overlay">
+    <div id="drop-highlight"></div>
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <p>Drop a GLB file here</p>
+    <small>or use the Load button →</small>
+  </div>
+</div>
+
+<!-- ── Panel ── -->
+<div id="panel">
+  <h1>GLB Viewer</h1>
+
+  <!-- File -->
+  <div class="section">
+    <div class="section-title">File</div>
+    <label id="file-btn" for="file-input">Load GLB…</label>
+    <div id="file-name">No file loaded</div>
+    <input type="file" id="file-input" accept=".glb,.gltf" style="display:none; position:absolute; pointer-events:none;">
+  </div>
+
+  <!-- Material presets -->
+  <div class="section">
+    <div class="section-title">Material preset</div>
+    <div class="preset-grid" id="preset-grid"></div>
+  </div>
+
+  <!-- Material properties -->
+  <div class="section">
+    <div class="section-title">Material properties</div>
+
+    <div class="row">
+      <label>Color</label>
+      <input type="color" id="mat-color" value="#c88c40">
+      <span class="val"></span>
+    </div>
+    <div class="row">
+      <label>Metalness</label>
+      <input type="range" id="mat-metal" min="0" max="1" step="0.01" value="0.9">
+      <span class="val" id="val-metal">0.90</span>
+    </div>
+    <div class="row">
+      <label>Roughness</label>
+      <input type="range" id="mat-rough" min="0" max="1" step="0.01" value="0.35">
+      <span class="val" id="val-rough">0.35</span>
+    </div>
+    <div class="row">
+      <label>Env intensity</label>
+      <input type="range" id="mat-env" min="0" max="3" step="0.05" value="1">
+      <span class="val" id="val-env">1.00</span>
+    </div>
+    <div class="row">
+      <label>Emissive</label>
+      <input type="color" id="mat-emissive" value="#000000">
+      <span class="val"></span>
+    </div>
+    <div class="row">
+      <label>Em. intensity</label>
+      <input type="range" id="mat-emint" min="0" max="5" step="0.05" value="0">
+      <span class="val" id="val-emint">0.00</span>
+    </div>
+  </div>
+
+  <!-- Background -->
+  <div class="section">
+    <div class="section-title">Background</div>
+    <div class="bg-options">
+      <button class="bg-tab active" data-tab="color">Color</button>
+      <button class="bg-tab" data-tab="env">Env</button>
+      <button class="bg-tab" data-tab="image">Image</button>
+    </div>
+
+    <div class="bg-panel active" id="bg-color-panel">
+      <div class="row">
+        <label>BG color</label>
+        <input type="color" id="bg-color" value="#111111">
+      </div>
+    </div>
+
+    <div class="bg-panel" id="bg-env-panel">
+      <div class="env-grid" id="env-grid"></div>
+    </div>
+
+    <div class="bg-panel" id="bg-image-panel">
+      <button id="bg-img-btn">Load background image…</button>
+      <input type="file" id="bg-img-input" accept="image/*" style="display:none">
+      <div class="row">
+        <label>Blur</label>
+        <input type="range" id="bg-blur" min="0" max="20" step="0.5" value="0">
+        <span class="val" id="val-blur">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lights -->
+  <div class="section">
+    <div class="section-title">Lights</div>
+
+    <div class="light-row">
+      <div class="dot" style="background:#fff5e0"></div>
+      <label>Key color</label>
+      <input type="color" id="light-key-color" value="#fff5e0">
+    </div>
+    <div class="row">
+      <label>Key intensity</label>
+      <input type="range" id="light-key-int" min="0" max="5" step="0.05" value="2.2">
+      <span class="val" id="val-key-int">2.20</span>
+    </div>
+    <div class="light-row">
+      <div class="dot" style="background:#8ab0ff"></div>
+      <label>Fill color</label>
+      <input type="color" id="light-fill-color" value="#8ab0ff">
+    </div>
+    <div class="row">
+      <label>Fill intensity</label>
+      <input type="range" id="light-fill-int" min="0" max="3" step="0.05" value="0.6">
+      <span class="val" id="val-fill-int">0.60</span>
+    </div>
+    <div class="row">
+      <label>Ambient</label>
+      <input type="range" id="light-amb" min="0" max="2" step="0.05" value="0.4">
+      <span class="val" id="val-amb">0.40</span>
+    </div>
+  </div>
+
+  <!-- Surface texture -->
+  <div class="section">
+    <div class="section-title">Surface texture</div>
+    <div class="preset-grid" id="tex-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px;"></div>
+    <div class="row">
+      <label>Strength</label>
+      <input type="range" id="tex-strength" min="0" max="1" step="0.01" value="0.4">
+      <span class="val" id="val-tex-strength">0.40</span>
+    </div>
+    <div class="row">
+      <label>Scale</label>
+      <input type="range" id="tex-scale" min="1" max="20" step="0.5" value="4">
+      <span class="val" id="val-tex-scale">4.0</span>
+    </div>
+  </div>
+
+  <!-- Screenshot -->
+  <div class="section">
+    <div class="section-title">Screenshot</div>
+    <div class="row">
+      <label>Resolution</label>
+      <select id="snap-res" style="flex:1;background:#222;border:1px solid #333;border-radius:4px;color:#bbb;padding:3px 6px;font-size:11px;">
+        <option value="1920x1080">1920 × 1080</option>
+        <option value="2560x1440">2560 × 1440</option>
+        <option value="3840x2160" selected>3840 × 2160 (4K)</option>
+        <option value="7680x4320">7680 × 4320 (8K)</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Padding</label>
+      <input type="range" id="snap-pad" min="0" max="0.4" step="0.01" value="0.08">
+      <span class="val" id="val-snap-pad">0.08</span>
+    </div>
+    <button id="snap-btn" style="width:100%;padding:8px 0;background:#2a2a2a;border:1px solid #383838;border-radius:6px;color:#bbb;cursor:pointer;font-size:12px;transition:background 0.15s,color 0.15s;">
+      Save PNG
+    </button>
+    <div id="snap-status" style="margin-top:6px;font-size:11px;color:#555;"></div>
+  </div>
+
+  <!-- Turntable -->
+  <div class="section">
+    <div class="section-title">Turntable</div>
+    <div class="row">
+      <label>Auto-rotate</label>
+      <input type="checkbox" id="turntable-on" style="cursor:pointer;accent-color:#aaa;">
+    </div>
+    <div class="row">
+      <label>Speed</label>
+      <input type="range" id="turntable-speed" min="-4" max="4" step="0.1" value="0.5">
+      <span class="val" id="val-turntable-speed">0.5</span>
+    </div>
+  </div>
+
+  <!-- Reset -->
+  <div class="section">
+    <button id="reset-btn">Reset camera</button>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+// ── Material presets ────────────────────────────────────────────────────────
+
+const PRESETS = {
+  bronze:   { color: '#c88c40', metalness: 0.90, roughness: 0.35, label: 'Bronze' },
+  gold:     { color: '#ffc80d', metalness: 0.95, roughness: 0.20, label: 'Gold'   },
+  silver:   { color: '#ccccdd', metalness: 0.95, roughness: 0.18, label: 'Silver' },
+  copper:   { color: '#f2722e', metalness: 0.90, roughness: 0.30, label: 'Copper' },
+  rawmetal: { color: '#b0b8c0', metalness: 1.00, roughness: 0.42, label: 'Raw ꟿ'  },
+  obsidian: { color: '#0d0a14', metalness: 0.05, roughness: 0.08, label: 'Obsid.' },
+  marble:   { color: '#e5e0d9', metalness: 0.00, roughness: 0.55, label: 'Marble' },
+  jade:     { color: '#338c58', metalness: 0.00, roughness: 0.45, label: 'Jade'   },
+  matte:    { color: '#cccccc', metalness: 0.00, roughness: 0.80, label: 'Matte'  },
+};
+
+const PRESET_BG = {
+  bronze:   '#3d1f00', gold: '#2a2000', silver: '#1a1a20',
+  copper:   '#3d1a00', obsidian: '#080608', marble: '#1c1c1c',
+  jade:     '#0a1a10', matte: '#181818',
+};
+
+// ── Scene setup ─────────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('c');
+window._dbg = {};
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#111111');
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.001, 1000);
+camera.position.set(0, 0.5, 3);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minDistance = 0.1;
+controls.maxDistance = 50;
+
+// ── Lights ───────────────────────────────────────────────────────────────────
+
+const keyLight = new THREE.DirectionalLight('#fff5e0', 2.2);
+keyLight.position.set(3, 5, 4);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight('#8ab0ff', 0.6);
+fillLight.position.set(-4, 2, -3);
+scene.add(fillLight);
+
+const ambLight = new THREE.AmbientLight('#ffffff', 0.4);
+scene.add(ambLight);
+
+// ── Shared material ──────────────────────────────────────────────────────────
+
+const mat = new THREE.MeshStandardMaterial({
+  color: new THREE.Color('#c88c40'),
+  metalness: 0.9,
+  roughness: 0.35,
+  envMapIntensity: 1.0,
+});
+
+// ── Model state ─────────────────────────────────────────────────────────────
+
+let currentModel = null;
+let modelCenter = new THREE.Vector3();
+let modelSize = 1;
+
+function loadGLB(file) {
+  const url = URL.createObjectURL(file);
+  const loader = new GLTFLoader();
+  loader.load(url, (gltf) => {
+    URL.revokeObjectURL(url);
+
+    if (currentModel) {
+      scene.remove(currentModel);
+      currentModel = null;
+    }
+
+    const model = gltf.scene;
+
+    // Apply shared material to all meshes
+    model.traverse(n => {
+      if (n.isMesh) {
+        n.material = mat;
+        n.castShadow = true;
+        n.receiveShadow = true;
+      }
+    });
+
+    scene.add(model);
+
+    // Fit camera after adding to scene so world transforms are ready
+    const box = new THREE.Box3().setFromObject(model);
+    box.getCenter(modelCenter);
+    modelSize = box.getSize(new THREE.Vector3()).length();
+
+    // Centre model at origin
+    model.position.sub(modelCenter);
+
+    const dist = modelSize * 1.8;
+    camera.near = modelSize * 0.001;
+    camera.far  = modelSize * 100;
+    camera.position.set(0, modelSize * 0.2, dist);
+    camera.updateProjectionMatrix();
+    controls.target.set(0, 0, 0);
+    controls.minDistance = modelSize * 0.05;
+    controls.maxDistance = modelSize * 20;
+    controls.update();
+
+    currentModel = model;
+    window._dbg = { scene, camera, controls, model, mat };
+    console.log('Model loaded. Size:', modelSize, 'Center:', modelCenter);
+    console.log('Camera pos:', camera.position);
+    document.getElementById('drop-overlay').classList.add('hidden');
+    document.getElementById('file-name').textContent = file.name;
+  },
+  undefined,
+  (err) => {
+    URL.revokeObjectURL(url);
+    console.error('GLTFLoader error:', err);
+    document.getElementById('file-name').textContent = 'Error loading file — check console';
+  });
+}
+
+// ── Resize ───────────────────────────────────────────────────────────────────
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Render loop ──────────────────────────────────────────────────────────────
+
+let turntableAngle = 0;
+let lastTime = performance.now();
+let needsRender = true;
+
+function requestRender() { needsRender = true; }
+
+// Trigger render on any controls interaction or panel input
+controls.addEventListener('change', requestRender);
+document.getElementById('panel').addEventListener('input', requestRender);
+document.getElementById('panel').addEventListener('change', requestRender);
+
+(function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  const turntableOn = document.getElementById('turntable-on').checked && currentModel;
+
+  if (turntableOn) {
+    const speed = parseFloat(document.getElementById('turntable-speed').value);
+    turntableAngle += speed * dt;
+    const offset = camera.position.clone().sub(controls.target);
+    const r = Math.sqrt(offset.x * offset.x + offset.z * offset.z);
+    offset.x = r * Math.sin(turntableAngle);
+    offset.z = r * Math.cos(turntableAngle);
+    camera.position.copy(controls.target).add(offset);
+    camera.lookAt(controls.target);
+    needsRender = true;
+  }
+
+  if (controls.update()) needsRender = true;
+
+  if (needsRender) {
+    renderer.render(scene, camera);
+    needsRender = false;
+  }
+})(performance.now());
+
+// ── File loading ─────────────────────────────────────────────────────────────
+
+function handleFile(file) {
+  if (!file) return;
+  loadGLB(file);
+}
+
+document.getElementById('file-input').addEventListener('change', e =>
+  handleFile(e.target.files[0]));
+
+// Drag & drop
+const wrap = document.getElementById('canvas-wrap');
+wrap.addEventListener('dragover', e => { e.preventDefault(); });
+wrap.addEventListener('drop', e => {
+  e.preventDefault();
+  handleFile(e.dataTransfer.files[0]);
+});
+
+// ── Material preset buttons ──────────────────────────────────────────────────
+
+const presetGrid = document.getElementById('preset-grid');
+
+Object.entries(PRESETS).forEach(([key, p]) => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-btn';
+  btn.dataset.key = key;
+  btn.style.background = p.color;
+  // darken metallic ones for label readability
+  btn.textContent = p.label;
+  btn.addEventListener('click', () => applyPreset(key));
+  presetGrid.appendChild(btn);
+});
+
+function applyPreset(key) {
+  const p = PRESETS[key];
+  mat.color.set(p.color);
+  mat.metalness = p.metalness;
+  mat.roughness = p.roughness;
+  mat.needsUpdate = true;
+
+  // Sync sliders
+  document.getElementById('mat-color').value = p.color;
+  document.getElementById('mat-metal').value = p.metalness;
+  document.getElementById('mat-rough').value = p.roughness;
+  document.getElementById('val-metal').textContent = p.metalness.toFixed(2);
+  document.getElementById('val-rough').textContent = p.roughness.toFixed(2);
+
+  // Suggest matching background color
+  const bgC = PRESET_BG[key] || '#111111';
+  document.getElementById('bg-color').value = bgC;
+  scene.background = new THREE.Color(bgC);
+
+  // Mark active
+  presetGrid.querySelectorAll('.preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.key === key));
+}
+
+// Start with bronze
+applyPreset('bronze');
+
+// ── Material sliders ─────────────────────────────────────────────────────────
+
+function slider(id, valId, setter) {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    if (valId) document.getElementById(valId).textContent = v.toFixed(2);
+    setter(v);
+    // deselect preset if user tweaks
+    presetGrid.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  });
+}
+
+document.getElementById('mat-color').addEventListener('input', e => {
+  mat.color.set(e.target.value);
+});
+slider('mat-metal', 'val-metal', v => { mat.metalness = v; });
+slider('mat-rough', 'val-rough', v => { mat.roughness = v; });
+slider('mat-env',   'val-env',   v => { mat.envMapIntensity = v; });
+document.getElementById('mat-emissive').addEventListener('input', e => {
+  mat.emissive.set(e.target.value);
+});
+slider('mat-emint', 'val-emint', v => { mat.emissiveIntensity = v; });
+
+// ── Light controls ───────────────────────────────────────────────────────────
+
+document.getElementById('light-key-color').addEventListener('input', e =>
+  keyLight.color.set(e.target.value));
+slider('light-key-int', 'val-key-int', v => { keyLight.intensity = v; });
+
+document.getElementById('light-fill-color').addEventListener('input', e =>
+  fillLight.color.set(e.target.value));
+slider('light-fill-int', 'val-fill-int', v => { fillLight.intensity = v; });
+slider('light-amb', 'val-amb', v => { ambLight.intensity = v; });
+
+// ── Background tabs ──────────────────────────────────────────────────────────
+
+document.querySelectorAll('.bg-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.bg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.bg-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`bg-${tab.dataset.tab}-panel`).classList.add('active');
+  });
+});
+
+// Color background
+document.getElementById('bg-color').addEventListener('input', e => {
+  scene.background = new THREE.Color(e.target.value);
+  scene.environment = null;
+});
+
+// ── Environment maps (procedural) ────────────────────────────────────────────
+
+const ENV_DEFS = {
+  'Studio':  { top: '#ffffff', bot: '#222222', side: '#aaaaaa' },
+  'Sunset':  { top: '#ff8844', bot: '#221100', side: '#ff5500' },
+  'Night':   { top: '#0a0a1a', bot: '#000005', side: '#0a0a20' },
+  'Noon':    { top: '#87ceeb', bot: '#4a7a4a', side: '#c0d8f0' },
+  'Warm':    { top: '#ffe0b0', bot: '#3a2800', side: '#ffcc88' },
+  'Cold':    { top: '#d0e8ff', bot: '#001830', side: '#a0c8f0' },
+};
+
+const envGrid = document.getElementById('env-grid');
+Object.entries(ENV_DEFS).forEach(([name, def]) => {
+  const btn = document.createElement('button');
+  btn.className = 'env-btn';
+  btn.textContent = name;
+  btn.addEventListener('click', () => {
+    applyProceduralEnv(def);
+    envGrid.querySelectorAll('.env-btn').forEach(b =>
+      b.classList.toggle('active', b === btn));
+  });
+  envGrid.appendChild(btn);
+});
+
+function applyProceduralEnv(def) {
+  // Build a simple gradient cube texture as environment
+  const size = 128;
+  const data = new Uint8Array(size * size * 4 * 6);
+  const top = hexToRGB(def.top), bot = hexToRGB(def.bot), side = hexToRGB(def.side);
+
+  // For each face fill a top-to-bottom gradient
+  for (let face = 0; face < 6; face++) {
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = (face * size * size + y * size + x) * 4;
+        let t = y / (size - 1);
+        // face 2 = +Y (top), face 3 = -Y (bottom)
+        let rgb;
+        if (face === 2) rgb = top;
+        else if (face === 3) rgb = bot;
+        else rgb = lerpRGB(top, bot, t);
+        data[i]   = rgb[0];
+        data[i+1] = rgb[1];
+        data[i+2] = rgb[2];
+        data[i+3] = 255;
+      }
+    }
+  }
+
+  const tex = new THREE.DataArrayTexture(data, size, size, 6);
+  tex.format = THREE.RGBAFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.mapping = THREE.CubeUVReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+
+  // Use a PMREMGenerator for env lighting
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const cubeRT = new THREE.WebGLCubeRenderTarget(size);
+  // Simpler: just set a color background + generate from color
+  const col = new THREE.Color(def.side);
+  scene.background = col;
+  const envMap = pmrem.fromEquirectangular(buildGradientTex(def, renderer)).texture;
+  scene.environment = envMap;
+  mat.envMapIntensity = parseFloat(document.getElementById('mat-env').value);
+  pmrem.dispose();
+}
+
+function buildGradientTex(def, renderer) {
+  const w = 256, h = 128;
+  const data = new Uint8Array(w * h * 4);
+  const top = hexToRGB(def.top), bot = hexToRGB(def.bot);
+  for (let y = 0; y < h; y++) {
+    const t = y / (h - 1);
+    const rgb = lerpRGB(top, bot, t);
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      data[i] = rgb[0]; data[i+1] = rgb[1]; data[i+2] = rgb[2]; data[i+3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, w, h, THREE.RGBAFormat);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function hexToRGB(hex) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function lerpRGB(a, b, t) {
+  return [
+    Math.round(a[0] + (b[0]-a[0]) * t),
+    Math.round(a[1] + (b[1]-a[1]) * t),
+    Math.round(a[2] + (b[2]-a[2]) * t),
+  ];
+}
+
+// ── Image background ─────────────────────────────────────────────────────────
+
+document.getElementById('bg-img-btn').addEventListener('click', () =>
+  document.getElementById('bg-img-input').click());
+
+document.getElementById('bg-img-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const loader = new THREE.TextureLoader();
+  loader.load(url, tex => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    scene.background = tex;
+    // also use as env light
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(tex).texture;
+    pmrem.dispose();
+    URL.revokeObjectURL(url);
+  });
+});
+
+slider('bg-blur', 'val-blur', v => {
+  // CSS blur on the canvas for background images (renderer backgroundBlurriness)
+  renderer.domElement.style.filter = v > 0 ? `blur(${v}px)` : '';
+  if (scene.background && scene.background.isTexture) {
+    renderer.xr = renderer.xr; // workaround: use blurriness property
+    scene.backgroundBlurriness = v / 20;
+  }
+});
+
+// ── Procedural roughness textures ────────────────────────────────────────────
+
+const TEX_SIZE = 512;
+
+const TEX_DEFS = {
+  none:     { label: 'None',    fn: null },
+  brushed:  { label: 'Brushed', fn: genBrushed },
+  scratch:  { label: 'Scratch', fn: genScratches },
+  pits:     { label: 'Pits',    fn: genPits },
+  grain:    { label: 'Grain',   fn: genGrain },
+  weave:    { label: 'Weave',   fn: genWeave },
+};
+
+let activeTexKey = 'none';
+let roughnessMap = null;
+
+// Build preset buttons
+const texGrid = document.getElementById('tex-grid');
+Object.entries(TEX_DEFS).forEach(([key, def]) => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-btn' + (key === 'none' ? ' active' : '');
+  btn.dataset.key = key;
+  btn.style.background = '#2a2a2a';
+  btn.style.fontSize = '9px';
+  btn.style.aspectRatio = 'auto';
+  btn.style.padding = '7px 0';
+  btn.textContent = def.label;
+  btn.addEventListener('click', () => {
+    texGrid.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTexKey = key;
+    rebuildTex();
+  });
+  texGrid.appendChild(btn);
+});
+
+document.getElementById('tex-strength').addEventListener('input', e => {
+  document.getElementById('val-tex-strength').textContent = parseFloat(e.target.value).toFixed(2);
+  rebuildTex();
+});
+document.getElementById('tex-scale').addEventListener('input', e => {
+  document.getElementById('val-tex-scale').textContent = parseFloat(e.target.value).toFixed(1);
+  rebuildTex();
+});
+
+function rebuildTex() {
+  const def = TEX_DEFS[activeTexKey];
+  if (!def.fn) {
+    mat.roughnessMap = null;
+    mat.normalMap = null;
+    mat.needsUpdate = true;
+    if (roughnessMap) { roughnessMap.dispose(); roughnessMap = null; }
+    return;
+  }
+  const strength = parseFloat(document.getElementById('tex-strength').value);
+  const scale    = parseFloat(document.getElementById('tex-scale').value);
+  const canvas2d = document.createElement('canvas');
+  canvas2d.width = canvas2d.height = TEX_SIZE;
+  const ctx = canvas2d.getContext('2d');
+  def.fn(ctx, TEX_SIZE, strength, scale);
+
+  if (roughnessMap) roughnessMap.dispose();
+  roughnessMap = new THREE.CanvasTexture(canvas2d);
+  roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+  roughnessMap.repeat.set(scale / 4, scale / 4);
+  mat.roughnessMap = roughnessMap;
+  mat.needsUpdate = true;
+}
+
+// ── Texture generators ───────────────────────────────────────────────────────
+
+function genBrushed(ctx, sz, strength) {
+  // Horizontal line noise (brushed metal direction)
+  const img = ctx.createImageData(sz, sz);
+  const d = img.data;
+  for (let y = 0; y < sz; y++) {
+    let v = 128;
+    for (let x = 0; x < sz; x++) {
+      v += (Math.random() - 0.5) * 80 * strength;
+      v = Math.max(0, Math.min(255, v));
+      const i = (y * sz + x) * 4;
+      d[i] = d[i+1] = d[i+2] = Math.round(v);
+      d[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function genScratches(ctx, sz, strength, scale) {
+  ctx.fillStyle = `rgb(200,200,200)`;
+  ctx.fillRect(0, 0, sz, sz);
+  const n = Math.round(strength * 80 * (scale / 4));
+  for (let i = 0; i < n; i++) {
+    const x0 = Math.random() * sz;
+    const y0 = Math.random() * sz;
+    const len = 20 + Math.random() * 180;
+    const ang = Math.random() * Math.PI;
+    const w   = 0.5 + Math.random() * 1.5;
+    const bright = Math.round(40 + Math.random() * 80);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len);
+    ctx.strokeStyle = `rgb(${bright},${bright},${bright})`;
+    ctx.lineWidth = w;
+    ctx.stroke();
+  }
+}
+
+function genPits(ctx, sz, strength, scale) {
+  ctx.fillStyle = 'rgb(200,200,200)';
+  ctx.fillRect(0, 0, sz, sz);
+  const n = Math.round(strength * 600 * (scale / 4));
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * sz;
+    const y = Math.random() * sz;
+    const r = 1 + Math.random() * 4 * strength;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgb(40,40,40)');
+    g.addColorStop(1, 'rgba(200,200,200,0)');
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+}
+
+function genGrain(ctx, sz, strength) {
+  const img = ctx.createImageData(sz, sz);
+  const d = img.data;
+  for (let i = 0; i < sz * sz; i++) {
+    const v = Math.round(128 + (Math.random() - 0.5) * 255 * strength);
+    d[i*4] = d[i*4+1] = d[i*4+2] = Math.max(0, Math.min(255, v));
+    d[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function genWeave(ctx, sz, strength, scale) {
+  ctx.fillStyle = 'rgb(180,180,180)';
+  ctx.fillRect(0, 0, sz, sz);
+  const cell = Math.round(sz / (scale * 3));
+  const dark = Math.round(80 + (1 - strength) * 120);
+  ctx.strokeStyle = `rgb(${dark},${dark},${dark})`;
+  for (let x = 0; x < sz; x += cell) {
+    for (let y = 0; y < sz; y += cell) {
+      ctx.lineWidth = cell * 0.35;
+      if (((x / cell) + (y / cell)) % 2 === 0) {
+        ctx.beginPath(); ctx.moveTo(x, y + cell * 0.5); ctx.lineTo(x + cell, y + cell * 0.5); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(x + cell * 0.5, y); ctx.lineTo(x + cell * 0.5, y + cell); ctx.stroke();
+      }
+    }
+  }
+}
+
+
+
+document.getElementById('snap-pad').addEventListener('input', e => {
+  document.getElementById('val-snap-pad').textContent = parseFloat(e.target.value).toFixed(2);
+});
+
+document.getElementById('snap-btn').addEventListener('click', () => {
+  if (!currentModel) {
+    document.getElementById('snap-status').textContent = 'Load a GLB first.';
+    return;
+  }
+
+  const [sw, sh] = document.getElementById('snap-res').value.split('x').map(Number);
+  const padding  = parseFloat(document.getElementById('snap-pad').value);
+  const status   = document.getElementById('snap-status');
+  status.textContent = 'Rendering…';
+
+  // Snapshot camera — same orientation, refitted to fill frame tightly
+  const snapCam = camera.clone();
+  snapCam.aspect = sw / sh;
+  const box = new THREE.Box3().setFromObject(currentModel);
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const fovY = THREE.MathUtils.degToRad(snapCam.fov);
+  const fovX = 2 * Math.atan(Math.tan(fovY / 2) * snapCam.aspect);
+  const fov  = Math.min(fovY, fovX);
+  const dist = (sphere.radius * (1 + padding)) / Math.sin(fov / 2);
+  snapCam.position.copy(sphere.center).addScaledVector(dir, dist);
+  snapCam.near = dist * 0.001;
+  snapCam.far  = dist * 10 + sphere.radius * 4;
+  snapCam.lookAt(sphere.center);
+  snapCam.updateProjectionMatrix();
+
+  // Reuse main renderer (preserves env maps, materials, lights)
+  // Save current state
+  const prevSize = renderer.getSize(new THREE.Vector2());
+  const prevPR   = renderer.getPixelRatio();
+  const prevPDB  = renderer.domElement.style.cssText;
+
+  renderer.setPixelRatio(1);
+  renderer.setSize(sw, sh, false);
+  renderer.render(scene, snapCam);
+
+  renderer.domElement.toBlob(blob => {
+    // Restore
+    renderer.setPixelRatio(prevPR);
+    renderer.setSize(prevSize.x, prevSize.y, false);
+    renderer.domElement.style.cssText = prevPDB;
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `sierpsphere_${sw}x${sh}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    status.textContent = `Saved ${sw}×${sh}.`;
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  }, 'image/png');
+});
+
+// ── Turntable controls ────────────────────────────────────────────────────────
+
+document.getElementById('turntable-speed').addEventListener('input', e =>
+  document.getElementById('val-turntable-speed').textContent = parseFloat(e.target.value).toFixed(1));
+document.getElementById('turntable-tilt').addEventListener('input', e =>
+  document.getElementById('val-turntable-tilt').textContent = e.target.value + '°');
+
+// Disable orbit drag while turntable is on
+document.getElementById('turntable-on').addEventListener('change', e => {
+  controls.enabled = !e.target.checked;
+  if (!e.target.checked) controls.update();
+});
+
+// ── Reset camera ─────────────────────────────────────────────────────────────
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  camera.position.set(0, modelSize * 0.3, modelSize * 1.8);
+  controls.target.set(0, 0, 0);
+  controls.update();
+});
+</script>
+</body>
+</html>

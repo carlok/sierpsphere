@@ -1,0 +1,71 @@
+services:
+  # Dev-only stack: runtime code is volume-mounted from host.
+  engine:
+    build:
+      context: ./engine
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./grammar:/app/grammar:ro
+      - ./engine/sdf.py:/app/sdf.py:ro
+      - ./engine/server.py:/app/server.py:ro
+      - ./engine/grammar_store.py:/app/grammar_store.py:ro
+      - ./gallery:/app/gallery:ro
+    environment:
+      - GRAMMAR_DIR=/app/grammar
+      - GALLERY_DIR=/app/gallery
+      - FLASK_DEBUG=1
+    restart: unless-stopped
+
+  viewer:
+    build:
+      context: ./viewer
+    ports:
+      - "8001:8080"
+    volumes:
+      - ./viewer/index.html:/usr/share/nginx/html/index.html:ro
+      - ./viewer/js:/usr/share/nginx/html/js:ro
+    depends_on:
+      - engine
+    restart: unless-stopped
+
+  test-py:
+    build:
+      context: ./engine
+    profiles: [test]
+    working_dir: /app
+    volumes:
+      - ./grammar:/app/grammar:ro
+      - ./engine/sdf.py:/app/sdf.py:ro
+      - ./engine/server.py:/app/server.py:ro
+      - ./engine/grammar_store.py:/app/grammar_store.py:ro
+      - ./engine/tests:/app/tests:ro
+      - ./engine/pytest.ini:/app/pytest.ini:ro
+    environment:
+      - GRAMMAR_DIR=/app/grammar
+    command: ["pytest"]
+
+  test-js:
+    image: docker.io/library/node:22-alpine
+    profiles: [test]
+    working_dir: /app
+    volumes:
+      - ./viewer/package.json:/app/package.json:ro
+      - ./viewer/js:/app/js:ro
+      - ./viewer/tests:/app/tests:ro
+    command: >
+      sh -c "npm install --silent && npm run test:coverage"
+
+  test-evolver:
+    build:
+      context: ./evolver
+    profiles: [test]
+    working_dir: /app
+    volumes:
+      - ./evolver/fitness.py:/app/fitness.py:ro
+      - ./evolver/mutate.py:/app/mutate.py:ro
+      - ./evolver/grammar_name.py:/app/grammar_name.py:ro
+      - ./evolver/tests:/app/tests:ro
+      - ./evolver/pytest.ini:/app/pytest.ini:ro
+    command: ["pytest"]
+
