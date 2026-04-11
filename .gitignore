@@ -28,3 +28,5 @@ gallery/
 *.gz
 *.toc
 .venv/
+_next/gallery/
+_next/grammar/

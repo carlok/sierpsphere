@@ -10,6 +10,6 @@
   "save_top_k": 5,
   "target_mm": 80.0,
   "bounds": 1.8,
-  "gallery_dir": "/app/gallery",
-  "grammar_dir": "/app/grammar"
+  "gallery_dir": "gallery",
+  "grammar_dir": "grammar"
 }
