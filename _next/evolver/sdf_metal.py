@@ -150,7 +150,8 @@ _TAU = 2.0 * math.pi
 _GROUP_MATS_NP: dict[str, np.ndarray] = {
     "tetrahedral": _generate_group([
         _rot_mat([1, 1, 1], _TAU / 3),  # C3 — vertex axis
-        _reflect_mat([1, -1, 0]),         # σ_d — diagonal mirror
+        _rot_mat([1, 0, 0], _TAU / 2),  # C2(x): (x,y,z)→(x,-y,-z), generates T
+        _reflect_mat([1, -1, 0]),         # σ_d: (x,y,z)→(y,x,z), coset Td\T
     ], expected_order=24),
 
     "octahedral": _generate_group([
