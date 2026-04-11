@@ -302,7 +302,11 @@ def evaluate_grammar_metal(
 def extract_mesh_metal(
     grammar: dict, resolution: int = 64, bounds: float = 1.8
 ) -> trimesh.Trimesh | None:
-    """Metal-accelerated mesh extraction via marching cubes."""
+    """Metal-accelerated mesh extraction via marching cubes.
+    Always returns at most the dominant component(s): parts with ≥15% of the
+    largest component's face count are kept; smaller dangles are dropped.
+    This ensures fitness evaluation and GLB export see the same topology.
+    """
     grid = evaluate_grammar_metal(grammar, resolution, bounds)
     if grid.max() <= 0 or grid.min() >= 0:
         return None
@@ -313,6 +317,15 @@ def extract_mesh_metal(
         return None
     verts -= bounds
     mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
+    if len(mesh.faces) == 0:
+        return None
+    parts = mesh.split(only_watertight=False)
+    if len(parts) > 1:
+        max_faces = max(len(p.faces) for p in parts)
+        parts = [p for p in parts if len(p.faces) >= max_faces * 0.15]
+        mesh = trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
+        mesh = trimesh.Trimesh(vertices=mesh.vertices.copy(),
+                               faces=mesh.faces.copy(), process=False)
     return mesh if len(mesh.faces) > 0 else None
 
 
