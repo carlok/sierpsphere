@@ -1,10 +1,12 @@
-# g-sdf-evolver
+# platosdf
 
 ![](aaa.jpg)
 
 A genetic evolver that generates 3D shapes defined by **G-invariant Signed Distance Functions**, optimised for DMLS/SLM metal 3D printing.
 
-Mathematical foundation: [`foundation.tex`](foundation.tex)
+**Repository:** [github.com/carlok/platosdf](https://github.com/carlok/platosdf)
+
+Mathematical foundation: [`foundation.tex`](foundation.tex) · formal notes: [`tex/g_carving_grammars.tex`](tex/g_carving_grammars.tex)
 
 ---
 
@@ -27,7 +29,7 @@ Each shape is a **G-grammar**: a seed primitive (the initial G-invariant SDF) fo
 ## Structure
 
 ```
-_next/
+platosdf/
 ├── evolver/
 │   ├── sdf_metal.py        # Metal/MPS SDF evaluator (PyTorch, Apple Silicon)
 │   ├── mutate.py           # Mutation, crossover, tournament selection
@@ -35,17 +37,20 @@ _next/
 │   ├── grammar_name.py     # Human-readable names and POSIX-safe slugs
 │   ├── evolver_native.py   # GA main loop (CLI)
 │   ├── config.json         # Population size, eval resolution, weights
-│   └── tests/              # 105 pytest tests
+│   └── tests/              # pytest suite
 │       ├── test_mutate.py
 │       ├── test_grammar_name.py
 │       └── test_fitness.py
 ├── engine/
 │   └── sdf.py              # NumPy SDF evaluator (CPU, server-side mesh export)
+├── glb-viewer/
+│   ├── index.html          # Three.js GLB viewer with material/light panel
+│   └── serve.py            # Local HTTP server
+├── tex/
+│   └── g_carving_grammars.tex  # Small theorems on G-carving grammars
 ├── foundation.tex          # Formal mathematical specification
 ├── PLAN.md                 # Step-by-step build plan
-├── PROMPT.txt              # Bootstrap prompt for new sessions
-├── SALVAGE.txt             # What was kept/discarded from the predecessor repo
-└── NAMES.txt               # Project name candidates
+└── PROMPT.txt              # Bootstrap prompt for new sessions
 ```
 
 ---
@@ -66,10 +71,10 @@ python evolver_native.py --epochs 10 --workers 8
 python evolver_native.py --resume --epochs 10
 ```
 
-Output is written to `_next/gallery/`:
+Output is written to `gallery/` (relative to `evolver/`):
 
 ```
-_next/gallery/
+gallery/
   epoch_0001/
     rank_01_<slug>.glb          # top-k 3D meshes (binary glTF)
     rank_01_<slug>_grammar.json
@@ -78,6 +83,14 @@ _next/gallery/
   manifest.json                 # cross-epoch summary
   population.json               # last population (used by --resume)
 ```
+
+### GLB viewer
+
+```bash
+python glb-viewer/serve.py   # → http://localhost:5000
+```
+
+Drag-and-drop any `.glb` from the gallery. Panel controls: material presets, metalness/roughness sliders, IBL environment, light intensities, turntable.
 
 ## Test
 
