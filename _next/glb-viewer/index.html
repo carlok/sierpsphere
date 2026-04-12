@@ -578,6 +578,10 @@ function loadGLB(file) {
         n.material = mat;
         n.castShadow = true;
         n.receiveShadow = true;
+        // Ensure smooth normals (marching-cubes GLBs may have only face normals)
+        if (n.geometry && !n.geometry.attributes.normal) {
+          n.geometry.computeVertexNormals();
+        }
       }
     });
 
@@ -707,8 +711,9 @@ function applyPreset(key) {
     b.classList.toggle('active', b.dataset.key === key));
 }
 
-// Start with bronze
+// Start with bronze + Studio env so metallic materials have IBL from the start
 applyPreset('bronze');
+applyProceduralEnv(ENV_DEFS['Studio']);
 
 // ── Material sliders ─────────────────────────────────────────────────────────
 
