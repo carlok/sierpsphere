@@ -632,14 +632,6 @@ resize();
 
 let turntableAngle = 0;
 let lastTime = performance.now();
-let needsRender = true;
-
-function requestRender() { needsRender = true; }
-
-// Trigger render on any controls interaction or panel input
-controls.addEventListener('change', requestRender);
-document.getElementById('panel').addEventListener('input', requestRender);
-document.getElementById('panel').addEventListener('change', requestRender);
 
 (function loop(now) {
   requestAnimationFrame(loop);
@@ -657,15 +649,10 @@ document.getElementById('panel').addEventListener('change', requestRender);
     offset.z = r * Math.cos(turntableAngle);
     camera.position.copy(controls.target).add(offset);
     camera.lookAt(controls.target);
-    needsRender = true;
   }
 
-  if (controls.update()) needsRender = true;
-
-  if (needsRender) {
-    renderer.render(scene, camera);
-    needsRender = false;
-  }
+  controls.update();
+  renderer.render(scene, camera);
 })(performance.now());
 
 // ── File loading ─────────────────────────────────────────────────────────────
@@ -743,23 +730,27 @@ function slider(id, valId, setter) {
 
 document.getElementById('mat-color').addEventListener('input', e => {
   mat.color.set(e.target.value);
+  mat.needsUpdate = true;
 });
-slider('mat-metal', 'val-metal', v => { mat.metalness = v; });
-slider('mat-rough', 'val-rough', v => { mat.roughness = v; });
-slider('mat-env',   'val-env',   v => { mat.envMapIntensity = v; });
+slider('mat-metal', 'val-metal', v => { mat.metalness = v; mat.needsUpdate = true; });
+slider('mat-rough', 'val-rough', v => { mat.roughness = v; mat.needsUpdate = true; });
+slider('mat-env',   'val-env',   v => { mat.envMapIntensity = v; mat.needsUpdate = true; });
 document.getElementById('mat-emissive').addEventListener('input', e => {
   mat.emissive.set(e.target.value);
+  mat.needsUpdate = true;
 });
-slider('mat-emint', 'val-emint', v => { mat.emissiveIntensity = v; });
+slider('mat-emint', 'val-emint', v => { mat.emissiveIntensity = v; mat.needsUpdate = true; });
 
 // ── Light controls ───────────────────────────────────────────────────────────
 
-document.getElementById('light-key-color').addEventListener('input', e =>
-  keyLight.color.set(e.target.value));
+document.getElementById('light-key-color').addEventListener('input', e => {
+  keyLight.color.set(e.target.value);
+});
 slider('light-key-int', 'val-key-int', v => { keyLight.intensity = v; });
 
-document.getElementById('light-fill-color').addEventListener('input', e =>
-  fillLight.color.set(e.target.value));
+document.getElementById('light-fill-color').addEventListener('input', e => {
+  fillLight.color.set(e.target.value);
+});
 slider('light-fill-int', 'val-fill-int', v => { fillLight.intensity = v; });
 slider('light-amb', 'val-amb', v => { ambLight.intensity = v; });
 
@@ -861,6 +852,7 @@ function buildGradientTex(def, renderer) {
     }
   }
   const tex = new THREE.DataTexture(data, w, h, THREE.RGBAFormat);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
   return tex;
