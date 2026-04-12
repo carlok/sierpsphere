@@ -29,3 +29,5 @@ grammar/
 *.gz
 *.toc
 .venv/
+
+old/

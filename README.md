@@ -1,5 +1,7 @@
 # g-sdf-evolver
 
+![](aaa.jpg)
+
 A genetic evolver that generates 3D shapes defined by **G-invariant Signed Distance Functions**, optimised for DMLS/SLM metal 3D printing.
 
 Mathematical foundation: [`foundation.tex`](foundation.tex)
