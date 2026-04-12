@@ -702,11 +702,6 @@ function applyPreset(key) {
   document.getElementById('val-metal').textContent = p.metalness.toFixed(2);
   document.getElementById('val-rough').textContent = p.roughness.toFixed(2);
 
-  // Suggest matching background color
-  const bgC = PRESET_BG[key] || '#111111';
-  document.getElementById('bg-color').value = bgC;
-  scene.background = new THREE.Color(bgC);
-
   // Mark active
   presetGrid.querySelectorAll('.preset-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.key === key));
@@ -768,7 +763,6 @@ document.querySelectorAll('.bg-tab').forEach(tab => {
 // Color background
 document.getElementById('bg-color').addEventListener('input', e => {
   scene.background = new THREE.Color(e.target.value);
-  scene.environment = null;
 });
 
 // ── Environment maps (procedural) ────────────────────────────────────────────
