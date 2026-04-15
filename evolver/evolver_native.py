@@ -106,7 +106,7 @@ def evaluate_population(population: list[dict], cfg: dict, max_workers: int = 0)
 
 # ── Gallery output ────────────────────────────────────────────────────────────
 
-def save_epoch(epoch, population, results, cfg, elapsed):
+def save_epoch(epoch, population, results, cfg, elapsed, export_stl=False):
     gallery = Path(cfg["gallery_dir"])
     epoch_dir = gallery / f"epoch_{epoch:04d}"
     epoch_dir.mkdir(parents=True, exist_ok=True)
@@ -148,6 +148,9 @@ def save_epoch(epoch, population, results, cfg, elapsed):
             if mesh and len(mesh.faces) > 0:
                 glb_path = epoch_dir / f"rank_{rank+1:02d}_{slug}.glb"
                 mesh.export(str(glb_path))
+                if export_stl:
+                    stl_path = epoch_dir / f"rank_{rank+1:02d}_{slug}.stl"
+                    mesh.export(str(stl_path))
                 m = mesh.copy()
                 m.apply_translation([offset_x, 0, 0])
                 offset_x += mesh.bounding_box.extents[0] * 1.3
@@ -309,7 +312,8 @@ def run(args):
         elapsed = time.time() - t0
 
         print_epoch(epoch, population, results, elapsed)
-        save_epoch(epoch, population, results, cfg, elapsed)
+        save_epoch(epoch, population, results, cfg, elapsed,
+                   export_stl=args.export_stl)
         pop_file.write_text(json.dumps(population, indent=2))
         population = next_generation(population, results, cfg, mode)
 
@@ -331,4 +335,7 @@ if __name__ == "__main__":
                         default="continuous",
                         help="Grammar vocabulary: continuous (random), "
                              "resonant (group-natural values), mixed (half/half)")
+    parser.add_argument("--export-stl", action="store_true",
+                        help="Export each top-k mesh as STL alongside GLB "
+                             "(for DMLS/SLM metal printing)")
     run(parser.parse_args())

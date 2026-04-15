@@ -69,6 +69,8 @@ pip install torch trimesh scipy scikit-image numpy pytest
 cd evolver
 python evolver_native.py --epochs 10 --workers 8
 python evolver_native.py --resume --epochs 10
+python evolver_native.py --epochs 10 --export-stl   # also writes .stl for metal printing
+python evolver_native.py --mode resonant --epochs 20 --export-stl
 ```
 
 Output is written to `gallery/` (relative to `evolver/`):
@@ -76,12 +78,13 @@ Output is written to `gallery/` (relative to `evolver/`):
 ```
 gallery/
   epoch_0001/
-    rank_01_<slug>.glb          # top-k 3D meshes (binary glTF)
+    rank_01_<slug>.glb           # top-k 3D meshes (binary glTF)
+    rank_01_<slug>.stl           # (only with --export-stl, for DMLS/SLM)
     rank_01_<slug>_grammar.json
-    overview.glb                # all top-k side by side
+    overview.glb                 # all top-k side by side
     fitness_log.json
-  manifest.json                 # cross-epoch summary
-  population.json               # last population (used by --resume)
+  manifest.json                  # cross-epoch summary
+  population.json                # last population (used by --resume)
 ```
 
 ### GLB viewer
