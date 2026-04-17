@@ -69,17 +69,35 @@ pip install torch trimesh scipy scikit-image numpy pytest
 cd evolver
 python evolver_native.py --epochs 10 --workers 8
 python evolver_native.py --resume --epochs 10
-python evolver_native.py --epochs 10 --export-stl   # also writes .stl for metal printing
-python evolver_native.py --mode resonant --epochs 20 --export-stl
 ```
+
+### STL-first run (metal printing)
+
+For direct upload to an SLM/DMLS service (e.g. weerg, Xometry, i.materialise):
+
+```bash
+cd evolver
+python evolver_native.py \
+    --mode resonant \
+    --epochs 30 \
+    --export-stl \
+    --stl-mc-level -0.02 \
+    --workers 8
+```
+
+`--export-stl` writes a `.stl` alongside every `.glb` each epoch.  
+`--stl-mc-level -0.02` dilates the solid ~0.5 mm at 80 mm scale — enough to pass the 0.5 mm minimum wall check used by most SLM services. Increase the magnitude (e.g. `-0.04`) for stricter services or thinner shapes.  
+`--mode resonant` constrains placements to group-theoretically natural positions, which tend to produce cleaner, more printable geometry.
+
+The fitness hard gate already rejects shapes below 0.5 mm wall thickness before they reach the STL stage, so every exported STL has passed the minimum wall check.
 
 Output is written to `gallery/` (relative to `evolver/`):
 
 ```
 gallery/
   epoch_0001/
-    rank_01_<slug>.glb           # top-k 3D meshes (binary glTF)
-    rank_01_<slug>.stl           # (only with --export-stl, for DMLS/SLM)
+    rank_01_<slug>.glb           # preview mesh (GLB, slight erosion)
+    rank_01_<slug>.stl           # print mesh (STL, dilated for SLM wall thickness)
     rank_01_<slug>_grammar.json
     overview.glb                 # all top-k side by side
     fitness_log.json
