@@ -106,7 +106,7 @@ def evaluate_population(population: list[dict], cfg: dict, max_workers: int = 0)
 
 # ── Gallery output ────────────────────────────────────────────────────────────
 
-def save_epoch(epoch, population, results, cfg, elapsed, export_stl=False):
+def save_epoch(epoch, population, results, cfg, elapsed, export_stl=False, stl_mc_level=-0.02):
     gallery = Path(cfg["gallery_dir"])
     epoch_dir = gallery / f"epoch_{epoch:04d}"
     epoch_dir.mkdir(parents=True, exist_ok=True)
@@ -149,8 +149,14 @@ def save_epoch(epoch, population, results, cfg, elapsed, export_stl=False):
                 glb_path = epoch_dir / f"rank_{rank+1:02d}_{slug}.glb"
                 mesh.export(str(glb_path))
                 if export_stl:
+                    # Re-extract at negative mc_level to dilate walls before
+                    # saving STL — ensures minimum wall thickness for SLM/DMLS
+                    stl_mesh = extract_mesh_metal(
+                        grammar, resolution=res, bounds=cfg["bounds"],
+                        mc_level=stl_mc_level)
+                    stl_target = stl_mesh if (stl_mesh and len(stl_mesh.faces) > 0) else mesh
                     stl_path = epoch_dir / f"rank_{rank+1:02d}_{slug}.stl"
-                    mesh.export(str(stl_path))
+                    stl_target.export(str(stl_path))
                 m = mesh.copy()
                 m.apply_translation([offset_x, 0, 0])
                 offset_x += mesh.bounding_box.extents[0] * 1.3
@@ -313,7 +319,8 @@ def run(args):
 
         print_epoch(epoch, population, results, elapsed)
         save_epoch(epoch, population, results, cfg, elapsed,
-                   export_stl=args.export_stl)
+                   export_stl=args.export_stl,
+                   stl_mc_level=args.stl_mc_level)
         pop_file.write_text(json.dumps(population, indent=2))
         population = next_generation(population, results, cfg, mode)
 
@@ -338,4 +345,8 @@ if __name__ == "__main__":
     parser.add_argument("--export-stl", action="store_true",
                         help="Export each top-k mesh as STL alongside GLB "
                              "(for DMLS/SLM metal printing)")
+    parser.add_argument("--stl-mc-level", type=float, default=-0.02,
+                        help="Marching-cubes level for STL export. Negative "
+                             "values dilate the solid (thicker walls). "
+                             "Default -0.02 adds ~0.5 mm at 80 mm scale.")
     run(parser.parse_args())

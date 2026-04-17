@@ -300,19 +300,27 @@ def evaluate_grammar_metal(
 
 
 def extract_mesh_metal(
-    grammar: dict, resolution: int = 64, bounds: float = 1.8
+    grammar: dict, resolution: int = 64, bounds: float = 1.8,
+    mc_level: float = 0.02,
 ) -> trimesh.Trimesh | None:
     """Metal-accelerated mesh extraction via marching cubes.
     Always returns at most the dominant component(s): parts with ≥15% of the
     largest component's face count are kept; smaller dangles are dropped.
     This ensures fitness evaluation and GLB export see the same topology.
+
+    mc_level: SDF iso-surface threshold.
+      0.02  (default) — slight erosion, removes sub-voxel necks.
+      0.0             — exact surface, no erosion.
+     -0.02            — slight dilation, thickens all walls (~0.5 mm at 80 mm
+                        target scale); use for STL export to pass slicer wall
+                        checks (e.g. weerg SLM minimum 0.5 mm).
     """
     grid = evaluate_grammar_metal(grammar, resolution, bounds)
     if grid.max() <= 0 or grid.min() >= 0:
         return None
     spacing = (2 * bounds) / (resolution - 1)
     try:
-        verts, faces, _, _ = marching_cubes(grid, level=0.02, spacing=(spacing,) * 3)
+        verts, faces, _, _ = marching_cubes(grid, level=mc_level, spacing=(spacing,) * 3)
     except Exception:
         return None
     verts -= bounds

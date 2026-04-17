@@ -48,7 +48,7 @@ def compute_fitness(
     scores["enclosed_voids"] = 1.0
 
     wt_score, wt_mm = _wall_thickness(mesh, target_mm)
-    if wt_mm < 0.3:
+    if wt_mm < 0.5:
         return _fail("min_wall_thickness")
     scores["min_wall_thickness"] = wt_score
     scores["min_feature_size"] = wt_score  # proxy (same scale)
@@ -187,27 +187,29 @@ def _wall_thickness(mesh: trimesh.Trimesh, target_mm: float) -> tuple[float, flo
     """
     Approximate minimum wall thickness via ray casting.
     Returns (score 0-1, thickness in mm at target scale).
+
+    Uses 400 surface samples + 2nd percentile (was 150 + 5th) so local thin
+    spots on high-symmetry shapes (Ih order-120) are not missed.
+    Score curve mapped to [0.5, 1.5] mm — weerg SLM minimum is ~0.5 mm.
     """
     try:
         scale_factor = target_mm / (mesh.bounding_sphere.primitive.radius * 2 + 1e-9)
-        # Sample random surface points, cast inward rays
-        n_samples = 150
+        n_samples = 400
         pts, face_ids = trimesh.sample.sample_surface(mesh, n_samples)
         normals = mesh.face_normals[face_ids]
-        # Cast ray inward
         origins = pts - normals * 1e-4
         directions = -normals
         locs, ray_ids, _ = mesh.ray.intersects_location(origins, directions, multiple_hits=False)
         if len(locs) == 0:
             return 0.5, target_mm * 0.1
         dists = np.linalg.norm(locs - origins[ray_ids], axis=1)
-        min_t = float(np.percentile(dists, 5)) * scale_factor  # 5th pct = min wall
-        if min_t >= 0.8:
+        min_t = float(np.percentile(dists, 2)) * scale_factor  # 2nd pct — tighter bound
+        if min_t >= 1.5:
             score = 1.0
-        elif min_t <= 0.3:
+        elif min_t <= 0.5:
             score = 0.0
         else:
-            score = (min_t - 0.3) / 0.5
+            score = (min_t - 0.5) / 1.0
         return float(score), float(min_t)
     except Exception:
         return 0.5, 1.0

@@ -241,7 +241,7 @@ def _grammar_b():
     return {
         "seed": {"type": "icosahedron", "radius": 1.0},
         "iterations": [
-            {"operation": "add", "primitive": "cube",
+            {"operation": "subtract", "primitive": "cube",
              "fd_u": 0.2, "fd_v": 0.3,
              "distance": 0.8, "scale_factor": 0.4, "smooth_radius": 0.01},
             {"operation": "intersect", "primitive": "tetrahedron",
